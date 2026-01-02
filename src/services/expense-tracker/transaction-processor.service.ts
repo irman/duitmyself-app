@@ -133,6 +133,7 @@ export class TransactionProcessor {
                     extracted.notes || payload.notification_text,
                     extracted.reference ? `Ref: ${extracted.reference}` : null,
                     locationNote ? `📍 ${locationNote}` : null,
+                    (payload.latitude && payload.longitude) ? `📌 ${payload.latitude}, ${payload.longitude}` : null,
                 ].filter(Boolean).join(' | '),
                 status: 'uncleared',
                 currency: extracted.currency?.toLowerCase() || 'myr',
