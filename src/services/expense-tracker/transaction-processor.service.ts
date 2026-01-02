@@ -63,6 +63,35 @@ export class TransactionProcessor {
                 payload.notification_text
             );
 
+            // Step 2.5: Confidence Filter - Only process actual transactions
+            if (!extracted.is_transaction) {
+                logger.info({
+                    event: 'filter.not_transaction',
+                    appName: payload.app_name,
+                    confidence: extracted.confidence,
+                }, 'Notification is not a transaction, skipping');
+
+                return {
+                    success: false,
+                    error: 'Not a financial transaction',
+                };
+            }
+
+            const MIN_CONFIDENCE = 0.4;
+            if (extracted.confidence && extracted.confidence < MIN_CONFIDENCE) {
+                logger.warn({
+                    event: 'filter.low_confidence',
+                    appName: payload.app_name,
+                    confidence: extracted.confidence,
+                    threshold: MIN_CONFIDENCE,
+                }, 'Transaction confidence too low, skipping');
+
+                return {
+                    success: false,
+                    error: `Low confidence: ${extracted.confidence}`,
+                };
+            }
+
             // Step 3: Account Mapping - Resolve account ID
             const accountId = getAccountId(payload.app_name);
             if (!accountId) {
@@ -100,9 +129,13 @@ export class TransactionProcessor {
                 payee: extracted.merchant,
                 account_id: accountId,
                 category: extracted.category,
-                notes: `${payload.notification_title}${locationNote}`,
+                notes: [
+                    extracted.notes || payload.notification_text,
+                    extracted.reference ? `Ref: ${extracted.reference}` : null,
+                    locationNote ? `📍 ${locationNote}` : null,
+                ].filter(Boolean).join(' | '),
                 status: 'cleared',
-                currency: 'myr',
+                currency: extracted.currency?.toLowerCase() || 'myr',
             };
 
             // Step 6: Budget Sync - Create transaction

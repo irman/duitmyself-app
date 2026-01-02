@@ -109,39 +109,51 @@ export class GeminiAdapter implements AIAdapter {
      */
     private buildPrompt(text: string): string {
         return `
-You are a financial transaction parser for Malaysian banking apps. Extract transaction details from the following notification text and return ONLY a JSON object with no additional text or markdown formatting.
+Your job is to help automate transactions from Android banking notifications to a budgeting app.
 
-Notification text:
-"${text}"
+Analyze this notification and determine if it's a financial transaction:
 
-Return a JSON object with these exact fields:
-- amount: number (positive for debit/spending, negative for credit/receiving money)
-- merchant: string (the merchant, store, or person involved)
-- type: "debit" or "credit"
-- category: string (optional, e.g., "Food & Dining", "Transportation", "Shopping", "Transfer")
+\`\`\`
+${text}
+\`\`\`
 
-Examples:
+If this is a transaction notification, extract:
+- Amount (number only, no currency symbol)
+- Currency (MYR, USD, etc.)
+- Transaction type (debit, credit, transfer)
+- Payee/Merchant name
+- Category (food, transport, shopping, bills, transfer, entertainment, other)
+- Any reference number
+- Your confidence level (0.0 to 1.0)
 
-Input: "You spent RM 45.50 at Starbucks"
-Output: {"amount": 45.50, "merchant": "Starbucks", "type": "debit", "category": "Food & Dining"}
+Return ONLY valid JSON in this exact format:
+{
+  "is_transaction": true,
+  "amount": 45.50,
+  "currency": "MYR",
+  "type": "debit",
+  "merchant": "Starbucks",
+  "category": "food",
+  "reference": "REF123456",
+  "notes": "original notification text here",
+  "confidence": 0.95
+}
 
-Input: "Received RM 100.00 from John Doe"
-Output: {"amount": -100.00, "merchant": "John Doe", "type": "credit", "category": "Transfer"}
+If this is NOT a transaction (e.g., promotional message, account update, etc.), return:
+{
+  "is_transaction": false,
+  "confidence": 0.0
+}
 
-Input: "Payment of RM 25.00 to Grab"
-Output: {"amount": 25.00, "merchant": "Grab", "type": "debit", "category": "Transportation"}
-
-Input: "Reload successful. RM 50.00 added to your TNG eWallet"
-Output: {"amount": -50.00, "merchant": "TNG eWallet", "type": "credit", "category": "Transfer"}
-
-Important:
+Important rules:
+- Amount should be positive for spending (debit) and negative for receiving money (credit)
+- Only set is_transaction to true if you're confident this is an actual financial transaction
+- Confidence should be 0.0-1.0 (0.8+ for clear transactions, 0.4-0.7 for uncertain, <0.4 for unlikely)
+- Extract the exact merchant/payee name from the notification
+- Handle Malaysian Ringgit (RM/MYR) currency
 - Return ONLY the JSON object, no markdown code blocks or additional text
-- Amount should be positive for spending (debit) and negative for receiving (credit)
-- If category is unclear, omit it
-- Extract the exact merchant name from the notification
-- Handle Malaysian Ringgit (RM) currency
 
-Now extract the transaction from the notification above:
+Now analyze the notification above:
 `.trim();
     }
 

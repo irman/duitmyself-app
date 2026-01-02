@@ -16,7 +16,7 @@ export type TransactionType = 'debit' | 'credit';
  * Webhook payload from MacroDroid
  */
 export interface WebhookPayload {
-    /** Banking app name */
+    /** Banking app package name (e.g., com.maybank2u.life) - used for filtering and account mapping */
     app_name: string;
     /** Notification title */
     notification_title: string;
@@ -34,14 +34,24 @@ export interface WebhookPayload {
  * Extracted transaction data from AI
  */
 export interface ExtractedTransaction {
+    /** Whether this is actually a transaction (not just a notification) */
+    is_transaction: boolean;
     /** Transaction amount (positive for debit, negative for credit) */
     amount: number;
     /** Merchant or payee name */
     merchant: string;
     /** Transaction type */
     type: TransactionType;
+    /** Currency code (e.g., MYR, USD) */
+    currency?: string | undefined;
     /** Optional category */
     category?: string | undefined;
+    /** Transaction reference number */
+    reference?: string | undefined;
+    /** AI confidence score (0-1) */
+    confidence?: number | undefined;
+    /** Original notification text for notes */
+    notes?: string | undefined;
 }
 
 /**

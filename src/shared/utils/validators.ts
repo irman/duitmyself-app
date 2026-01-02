@@ -48,10 +48,15 @@ export const envSchema = z.object({
  * Extracted transaction validation schema
  */
 export const extractedTransactionSchema = z.object({
+    is_transaction: z.boolean(),
     amount: z.number(),
     merchant: z.string().min(1),
     type: z.enum(['debit', 'credit']),
+    currency: z.string().optional(),
     category: z.string().optional(),
+    reference: z.string().optional(),
+    confidence: z.number().min(0).max(1).optional(),
+    notes: z.string().optional(),
 });
 
 /**

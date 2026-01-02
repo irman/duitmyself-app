@@ -1,6 +1,7 @@
 {
-    "Maybank MAE": "246029",
-    "Grab": "246042",
-    "TNG eWallet": "246066",
-    "ShopeePay": "246046"
+    "com.maybank2u.life": "246029",
+    "my.com.tngdigital.ewallet": "246066",
+    "com.grabtaxi.passenger": "246042",
+    "com.shopee.my": "246046",
+    "com.shopeepay.my": "246046"
 }
