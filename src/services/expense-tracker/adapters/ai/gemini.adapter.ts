@@ -17,7 +17,7 @@ export class GeminiAdapter implements AIAdapter {
     constructor(apiKey: string) {
         this.genAI = new GoogleGenerativeAI(apiKey);
         this.model = this.genAI.getGenerativeModel({
-            model: 'gemini-1.5-flash',
+            model: 'gemini-2.5-flash',
             safetySettings: [
                 {
                     category: HarmCategory.HARM_CATEGORY_HARASSMENT,
