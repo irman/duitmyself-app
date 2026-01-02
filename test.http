@@ -1,0 +1,110 @@
+### Test duitmyself webhook locally
+### Make sure the app is running on http://localhost:3000
+
+### Health Check
+GET http://localhost:3000/health
+
+###
+
+### Test webhook with MacroDroid format (Unix timestamp in milliseconds)
+POST http://localhost:3000/webhook
+Content-Type: application/json
+
+{
+  "app": "com.maybank2u.life",
+  "title": "Maybank2u: Scan & Pay",
+  "text": "You've transferred RM 0.50 to MUHAMMAD AIMAN AKMAL BIN. REF: 769840557Q.",
+  "timestamp": "1767338491224",
+  "subtext": "",
+  "latitude": "3.1821866",
+  "longitude": "101.6748052"
+}
+
+###
+
+### Test webhook with TNG eWallet
+POST http://localhost:3000/webhook
+Content-Type: application/json
+
+{
+  "app": "my.com.tngdigital.ewallet",
+  "title": "Payment Successful",
+  "text": "You spent RM 25.00 at Grab",
+  "timestamp": "1767338491224",
+  "latitude": "3.1578",
+  "longitude": "101.7119"
+}
+
+###
+
+### Test webhook with Grab
+POST http://localhost:3000/webhook
+Content-Type: application/json
+
+{
+  "app": "com.grabtaxi.passenger",
+  "title": "Payment Successful",
+  "text": "Payment of RM 15.50 to GrabFood",
+  "timestamp": "1767338491224",
+  "latitude": "3.1578",
+  "longitude": "101.7119"
+}
+
+###
+
+### Test webhook with ShopeePay
+POST http://localhost:3000/webhook
+Content-Type: application/json
+
+{
+  "app": "com.shopeepay.my",
+  "title": "Transaction Successful",
+  "text": "You spent RM 89.90 at Shopee",
+  "timestamp": "1767338491224"
+}
+
+###
+
+### Test webhook with non-transaction (should be rejected)
+POST http://localhost:3000/webhook
+Content-Type: application/json
+
+{
+  "app": "com.maybank2u.life",
+  "title": "Promotion",
+  "text": "Get 10% cashback on all purchases this month!",
+  "timestamp": "1767338491224"
+}
+
+###
+
+### Test webhook with standard format (ISO timestamp)
+POST http://localhost:3000/webhook
+Content-Type: application/json
+
+{
+  "app_name": "com.maybank2u.life",
+  "notification_title": "Transaction Alert",
+  "notification_text": "You spent RM 45.50 at Starbucks KLCC",
+  "timestamp": "2026-01-02T15:00:00+08:00",
+  "latitude": "3.1578",
+  "longitude": "101.7119"
+}
+
+###
+
+### Test webhook with unknown app (should be rejected)
+POST http://localhost:3000/webhook
+Content-Type: application/json
+
+{
+  "app": "com.unknown.app",
+  "title": "Transaction",
+  "text": "You spent RM 10.00",
+  "timestamp": "1767338491224"
+}
+
+###
+
+### Metrics endpoint
+GET http://localhost:3000/metrics

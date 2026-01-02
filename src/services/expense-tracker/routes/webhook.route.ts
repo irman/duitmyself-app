@@ -18,9 +18,20 @@ export function createWebhookRoutes(processor: TransactionProcessor) {
      * Accepts both MacroDroid format (app, title, text) and standard format
      */
     function normalizePayload(body: any): any {
+        // Convert Unix timestamp (milliseconds) to ISO 8601 if needed
+        let timestamp = body.timestamp;
+        if (timestamp && /^\d+$/.test(timestamp)) {
+            // It's a Unix timestamp in milliseconds
+            const date = new Date(parseInt(timestamp));
+            timestamp = date.toISOString();
+        }
+
         // If it's already in standard format, return as-is
         if (body.app_name && body.notification_title && body.notification_text) {
-            return body;
+            return {
+                ...body,
+                timestamp,
+            };
         }
 
         // Convert MacroDroid format to standard format
@@ -28,7 +39,7 @@ export function createWebhookRoutes(processor: TransactionProcessor) {
             app_name: body.app || body.app_name,
             notification_title: body.title || body.notification_title,
             notification_text: body.text || body.notification_text,
-            timestamp: body.timestamp,
+            timestamp,
             latitude: body.latitude,
             longitude: body.longitude,
         };
