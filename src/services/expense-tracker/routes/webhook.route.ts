@@ -44,11 +44,33 @@ export function createWebhookRoutes(processor: TransactionProcessor) {
             // Parse request body
             const body = await c.req.json();
 
+            // Log raw incoming payload for debugging
+            logger.info({
+                event: 'webhook.payload.received',
+                raw_payload: body,
+                headers: {
+                    'content-type': c.req.header('content-type'),
+                    'user-agent': c.req.header('user-agent'),
+                },
+            }, 'Received webhook payload');
+
             // Normalize payload to standard format
             const normalizedBody = normalizePayload(body);
 
+            // Log normalized payload
+            logger.info({
+                event: 'webhook.payload.normalized',
+                normalized_payload: normalizedBody,
+            }, 'Normalized webhook payload');
+
             // Validate normalized payload
             const payload = validateWebhookPayload(normalizedBody);
+
+            // Log validated payload
+            logger.info({
+                event: 'webhook.payload.validated',
+                validated_payload: payload,
+            }, 'Validated webhook payload');
 
             // Process transaction asynchronously (fire-and-forget)
             // We respond immediately to MacroDroid, processing happens in background
