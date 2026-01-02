@@ -96,10 +96,21 @@ export class GeminiAdapter implements AIAdapter {
      */
     async validateApiKey(): Promise<boolean> {
         try {
-            await this.extractTransactionData('Test notification: You spent RM 10.00 at Test Store');
-            return true;
+            // Just test if we can call Gemini API - don't validate the response schema
+            const prompt = 'Say "OK" if you can read this.';
+            const result = await this.model.generateContent(prompt);
+            const response = result.response;
+            const responseText = response.text();
+
+            // If we got any response, the API key is valid
+            return responseText.length > 0;
         } catch (error) {
-            logger.warn('Gemini API key validation failed', { error });
+            logger.warn('Gemini API key validation failed', {
+                error: error instanceof Error ? {
+                    message: error.message,
+                    name: error.name,
+                } : error
+            });
             return false;
         }
     }
