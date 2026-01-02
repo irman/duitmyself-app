@@ -13,7 +13,7 @@ Content-Type: application/json
 {
   "app": "com.maybank2u.life",
   "title": "Maybank2u: Scan & Pay",
-  "text": "You've transferred RM 0.50 to MUHAMMAD AIMAN AKMAL BIN. REF: 769840557Q.",
+  "text": "[TEST] You've transferred RM 0.50 to MUHAMMAD AIMAN AKMAL BIN. REF: 769840557Q.",
   "timestamp": "1767338491224",
   "subtext": "",
   "latitude": "3.1821866",

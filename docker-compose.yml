@@ -19,6 +19,7 @@ services:
       - ./config:/app/config:ro
     networks:
       - duitmyself-network
+      - signoz-net
     healthcheck:
       test: [ "CMD", "bun", "run", "-e", "fetch('http://localhost:3000/health').then(r => r.ok ? process.exit(0) : process.exit(1))" ]
       interval: 30s
@@ -34,3 +35,6 @@ services:
 networks:
   duitmyself-network:
     driver: bridge
+  signoz-net:
+    external: true
+    name: signoz-net

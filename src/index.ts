@@ -1,3 +1,6 @@
+// IMPORTANT: Import tracing FIRST to enable auto-instrumentation
+import './shared/utils/tracing';
+
 import { createApp } from './api/app';
 import { createRoutes } from './api/routes';
 import { TransactionProcessor } from './services/expense-tracker/transaction-processor.service';
