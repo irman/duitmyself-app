@@ -14,15 +14,41 @@ export function createWebhookRoutes(processor: TransactionProcessor) {
     const app = new Hono();
 
     /**
+     * Normalize MacroDroid payload to standard format
+     * Accepts both MacroDroid format (app, title, text) and standard format
+     */
+    function normalizePayload(body: any): any {
+        // If it's already in standard format, return as-is
+        if (body.app_name && body.notification_title && body.notification_text) {
+            return body;
+        }
+
+        // Convert MacroDroid format to standard format
+        return {
+            app_name: body.app || body.app_name,
+            notification_title: body.title || body.notification_title,
+            notification_text: body.text || body.notification_text,
+            timestamp: body.timestamp,
+            latitude: body.latitude,
+            longitude: body.longitude,
+        };
+    }
+
+    /**
      * POST /webhook
      * 
      * Process banking notification from MacroDroid
      */
     app.post('/webhook', async (c) => {
         try {
-            // Parse and validate request body
+            // Parse request body
             const body = await c.req.json();
-            const payload = validateWebhookPayload(body);
+
+            // Normalize payload to standard format
+            const normalizedBody = normalizePayload(body);
+
+            // Validate normalized payload
+            const payload = validateWebhookPayload(normalizedBody);
 
             // Process transaction asynchronously (fire-and-forget)
             // We respond immediately to MacroDroid, processing happens in background
