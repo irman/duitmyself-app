@@ -7,7 +7,7 @@ GET https://duitmyself.obliquetitan.com/health
 ###
 
 ### Test webhook with MacroDroid format (Unix timestamp in milliseconds)
-POST https://duitmyself.obliquetitan.com/webhook
+POST https://duitmyself.obliquetitan.com/webhook/notification
 Content-Type: application/json
 
 {
@@ -23,7 +23,7 @@ Content-Type: application/json
 ###
 
 ### Test webhook with TNG eWallet
-POST https://duitmyself.obliquetitan.com/webhook
+POST https://duitmyself.obliquetitan.com/webhook/notification
 Content-Type: application/json
 
 {
@@ -38,7 +38,7 @@ Content-Type: application/json
 ###
 
 ### Test webhook with Grab
-POST https://duitmyself.obliquetitan.com/webhook
+POST https://duitmyself.obliquetitan.com/webhook/notification
 Content-Type: application/json
 
 {
@@ -53,7 +53,7 @@ Content-Type: application/json
 ###
 
 ### Test webhook with ShopeePay
-POST https://duitmyself.obliquetitan.com/webhook
+POST https://duitmyself.obliquetitan.com/webhook/notification
 Content-Type: application/json
 
 {
@@ -66,7 +66,7 @@ Content-Type: application/json
 ###
 
 ### Test webhook with non-transaction (should be rejected)
-POST https://duitmyself.obliquetitan.com/webhook
+POST https://duitmyself.obliquetitan.com/webhook/notification
 Content-Type: application/json
 
 {
@@ -79,7 +79,7 @@ Content-Type: application/json
 ###
 
 ### Test webhook with standard format (ISO timestamp)
-POST https://duitmyself.obliquetitan.com/webhook
+POST https://duitmyself.obliquetitan.com/webhook/notification
 Content-Type: application/json
 
 {
@@ -94,7 +94,7 @@ Content-Type: application/json
 ###
 
 ### Test webhook with unknown app (should be rejected)
-POST https://duitmyself.obliquetitan.com/webhook
+POST https://duitmyself.obliquetitan.com/webhook/notification
 Content-Type: application/json
 
 {
