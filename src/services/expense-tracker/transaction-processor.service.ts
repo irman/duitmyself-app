@@ -134,7 +134,7 @@ export class TransactionProcessor {
                     extracted.reference ? `Ref: ${extracted.reference}` : null,
                     locationNote ? `📍 ${locationNote}` : null,
                 ].filter(Boolean).join(' | '),
-                status: 'cleared',
+                status: 'uncleared',
                 currency: extracted.currency?.toLowerCase() || 'myr',
             };
 
