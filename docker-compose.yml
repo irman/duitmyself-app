@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  duitmyself:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: duitmyself
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    volumes:
+      # Mount config for easy updates without rebuild
+      - ./config:/app/config:ro
+    networks:
+      - duitmyself-network
+    healthcheck:
+      test: [ "CMD", "bun", "run", "-e", "fetch('http://localhost:3000/health').then(r => r.ok ? process.exit(0) : process.exit(1))" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  duitmyself-network:
+    driver: bridge
