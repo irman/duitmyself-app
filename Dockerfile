@@ -1,8 +1,7 @@
-# Multi-stage Dockerfile for duitmyself
-# Uses Bun runtime for optimal performance
+# Simplified Dockerfile for duitmyself
+# Bun can run TypeScript directly, no build step needed
 
-# Stage 1: Dependencies
-FROM oven/bun:1 AS deps
+FROM oven/bun:1 AS base
 WORKDIR /app
 
 # Copy package files
@@ -11,38 +10,14 @@ COPY package.json bun.lock ./
 # Install dependencies
 RUN bun install --frozen-lockfile --production
 
-# Stage 2: Builder
-FROM oven/bun:1 AS builder
-WORKDIR /app
-
-# Copy package files
-COPY package.json bun.lock ./
-
-# Install all dependencies (including dev)
-RUN bun install --frozen-lockfile
-
-# Copy source code
-COPY . .
-
-# Build the application
-RUN bun run build
-
-# Stage 3: Runner
-FROM oven/bun:1 AS runner
-WORKDIR /app
+# Copy application code
+COPY src ./src
+COPY config ./config
+COPY tsconfig.json ./
 
 # Set environment
 ENV NODE_ENV=production
 ENV PORT=3000
-
-# Copy dependencies from deps stage
-COPY --from=deps /app/node_modules ./node_modules
-
-# Copy built application
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/src ./src
-COPY --from=builder /app/package.json ./
-COPY --from=builder /app/config ./config
 
 # Expose port
 EXPOSE 3000
