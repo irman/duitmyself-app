@@ -43,18 +43,18 @@ function mergeAccountMapping(
 ): AccountMapping {
     const merged: AccountMapping = { ...fileMapping };
 
-    // Environment variable overrides
+    // Environment variable overrides (using APK package names)
     if (env.ACCOUNT_MAYBANK_MAE) {
-        merged['Maybank MAE'] = env.ACCOUNT_MAYBANK_MAE;
+        merged['com.maybank2u.life'] = env.ACCOUNT_MAYBANK_MAE;
     }
     if (env.ACCOUNT_GRAB) {
-        merged['Grab'] = env.ACCOUNT_GRAB;
+        merged['com.grabtaxi.passenger'] = env.ACCOUNT_GRAB;
     }
     if (env.ACCOUNT_TNG_EWALLET) {
-        merged['TNG eWallet'] = env.ACCOUNT_TNG_EWALLET;
+        merged['my.com.tngdigital.ewallet'] = env.ACCOUNT_TNG_EWALLET;
     }
     if (env.ACCOUNT_SHOPEEPAY) {
-        merged['ShopeePay'] = env.ACCOUNT_SHOPEEPAY;
+        merged['com.shopeepay.my'] = env.ACCOUNT_SHOPEEPAY;
     }
 
     return merged;
@@ -117,8 +117,14 @@ export const config = {
     // Account Mapping
     accountMapping,
 
-    // Allowed banking apps
-    allowedApps: ['Maybank MAE', 'Grab', 'TNG eWallet', 'ShopeePay'] as const,
+    // Allowed banking apps (APK package names)
+    allowedApps: [
+        'com.maybank2u.life',
+        'my.com.tngdigital.ewallet',
+        'com.grabtaxi.passenger',
+        'com.shopee.my',
+        'com.shopeepay.my',
+    ] as const,
 } as const;
 
 /**
