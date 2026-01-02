@@ -1,5 +1,7 @@
 import pino from 'pino';
+import { Writable } from 'stream';
 import type { LogContext } from '../types/common.types';
+import { pinoToOTLP } from './otlp-log-destination';
 
 /**
  * Create a logger instance with appropriate configuration
@@ -7,7 +9,7 @@ import type { LogContext } from '../types/common.types';
 function createLogger() {
     const isDevelopment = process.env.NODE_ENV === 'development';
     const logLevel = process.env.LOG_LEVEL || 'info';
-    const otlpEndpoint = process.env.OTEL_EXPORTER_OTLP_ENDPOINT || 'http://localhost:4318';
+    const otlpEndpoint = process.env.OTEL_EXPORTER_OTLP_ENDPOINT;
 
     const baseConfig = {
         level: logLevel,
@@ -34,23 +36,40 @@ function createLogger() {
         });
     }
 
-    // Production: Send logs to OpenTelemetry collector
-    return pino({
-        ...baseConfig,
-        transport: {
-            target: 'pino-opentelemetry-transport',
-            options: {
-                url: `${otlpEndpoint}/v1/logs`,
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                // Include trace context for correlation
-                resourceAttributes: {
-                    'service.name': process.env.OTEL_SERVICE_NAME || 'duitmyself-app',
-                },
+    // Production: Send logs to both console and OTLP endpoint
+    if (otlpEndpoint) {
+        // Create a writable stream for OTLP
+        const otlpStream = new Writable({
+            write(chunk, _encoding, callback) {
+                const log = chunk.toString();
+                try {
+                    const parsed = JSON.parse(log);
+                    const otlpLog = pinoToOTLP(parsed);
+
+                    fetch(`${otlpEndpoint}/v1/logs`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(otlpLog),
+                    }).catch(err => console.error('[OTLP] Failed to send log:', err));
+                } catch (error) {
+                    // Silently fail
+                }
+                callback();
             },
-        },
-    });
+        });
+
+        const streams = [
+            { stream: process.stdout },
+            { stream: otlpStream },
+        ];
+
+        return pino(baseConfig, pino.multistream(streams));
+    }
+
+    // Fallback: Standard JSON output with trace context
+    return pino(baseConfig);
 }
 
 /**

@@ -8,7 +8,7 @@ import { trace } from '@opentelemetry/api';
  * OpenTelemetry Tracing Configuration
  * 
  * Initializes OpenTelemetry SDK with SigNoz OTLP exporter
- * Auto-instruments HTTP requests and provides manual tracing capabilities
+ * Auto-instruments HTTP requests and Pino logs for trace correlation
  */
 
 // Get configuration from environment
@@ -62,12 +62,17 @@ console.log(`[OpenTelemetry] Exporting traces to: ${OTEL_ENDPOINT}`);
 
 // Graceful shutdown
 process.on('SIGTERM', () => {
-    sdk
-        .shutdown()
-        .then(() => console.log('[OpenTelemetry] Tracing terminated'))
-        .catch((error) => console.error('[OpenTelemetry] Error terminating tracing', error))
-        .finally(() => process.exit(0));
+    sdk.shutdown()
+        .then(() => {
+            console.log('[OpenTelemetry] SDK shut down successfully');
+            process.exit(0);
+        })
+        .catch((error) => {
+            console.error('[OpenTelemetry] Error shutting down SDK', error);
+            process.exit(1);
+        });
 });
 
 // Export tracer for manual instrumentation
 export const tracer = trace.getTracer(SERVICE_NAME, SERVICE_VERSION);
+
