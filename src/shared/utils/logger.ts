@@ -7,6 +7,7 @@ import type { LogContext } from '../types/common.types';
 function createLogger() {
     const isDevelopment = process.env.NODE_ENV === 'development';
     const logLevel = process.env.LOG_LEVEL || 'info';
+    const otlpEndpoint = process.env.OTEL_EXPORTER_OTLP_ENDPOINT || 'http://localhost:4318';
 
     const baseConfig = {
         level: logLevel,
@@ -33,7 +34,23 @@ function createLogger() {
         });
     }
 
-    return pino(baseConfig);
+    // Production: Send logs to OpenTelemetry collector
+    return pino({
+        ...baseConfig,
+        transport: {
+            target: 'pino-opentelemetry-transport',
+            options: {
+                url: `${otlpEndpoint}/v1/logs`,
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                // Include trace context for correlation
+                resourceAttributes: {
+                    'service.name': process.env.OTEL_SERVICE_NAME || 'duitmyself-app',
+                },
+            },
+        },
+    });
 }
 
 /**

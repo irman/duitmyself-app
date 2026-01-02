@@ -1,6 +1,7 @@
 import { NodeSDK } from '@opentelemetry/sdk-node';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
 import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node';
+import { PinoInstrumentation } from '@opentelemetry/instrumentation-pino';
 import { trace } from '@opentelemetry/api';
 
 /**
@@ -26,6 +27,15 @@ const sdk = new NodeSDK({
     serviceName: SERVICE_NAME,
     traceExporter,
     instrumentations: [
+        // Pino instrumentation for log-trace correlation
+        new PinoInstrumentation({
+            logHook: (span, record) => {
+                // Inject trace context into log records
+                record['trace_id'] = span.spanContext().traceId;
+                record['span_id'] = span.spanContext().spanId;
+                record['trace_flags'] = span.spanContext().traceFlags;
+            },
+        }),
         getNodeAutoInstrumentations({
             // Auto-instrument HTTP/HTTPS requests
             '@opentelemetry/instrumentation-http': {
@@ -33,6 +43,10 @@ const sdk = new NodeSDK({
             },
             // Disable instrumentations we don't need
             '@opentelemetry/instrumentation-fs': {
+                enabled: false,
+            },
+            // Disable Pino from auto-instrumentations since we're adding it manually
+            '@opentelemetry/instrumentation-pino': {
                 enabled: false,
             },
         }),
