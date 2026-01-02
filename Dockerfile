@@ -28,28 +28,21 @@ COPY . .
 RUN bun run build
 
 # Stage 3: Runner
-FROM oven/bun:1-slim AS runner
+FROM oven/bun:1 AS runner
 WORKDIR /app
 
 # Set environment
 ENV NODE_ENV=production
 ENV PORT=3000
 
-# Create non-root user
-RUN addgroup --system --gid 1001 nodejs && \
-    adduser --system --uid 1001 bunuser
-
 # Copy dependencies from deps stage
-COPY --from=deps --chown=bunuser:nodejs /app/node_modules ./node_modules
+COPY --from=deps /app/node_modules ./node_modules
 
 # Copy built application
-COPY --from=builder --chown=bunuser:nodejs /app/dist ./dist
-COPY --from=builder --chown=bunuser:nodejs /app/src ./src
-COPY --from=builder --chown=bunuser:nodejs /app/package.json ./
-COPY --from=builder --chown=bunuser:nodejs /app/config ./config
-
-# Switch to non-root user
-USER bunuser
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/src ./src
+COPY --from=builder /app/package.json ./
+COPY --from=builder /app/config ./config
 
 # Expose port
 EXPOSE 3000
