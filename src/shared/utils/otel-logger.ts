@@ -25,19 +25,37 @@ function toOtlpValue(value: any): any {
         return { stringValue: value };
     }
     if (typeof value === 'number') {
-        return Number.isInteger(value) ? { intValue: value } : { doubleValue: value };
+        return Number.isInteger(value) ? { intValue: String(value) } : { doubleValue: value };
     }
     if (typeof value === 'boolean') {
         return { boolValue: value };
     }
-    if (Array.isArray(value)) {
-        return { arrayValue: { values: value.map(v => toOtlpValue(v)) } };
+    if (value === null || value === undefined) {
+        return { stringValue: '' };
     }
-    if (typeof value === 'object' && value !== null) {
-        // For objects, flatten to stringified JSON
-        return { stringValue: JSON.stringify(value) };
+    // Arrays and objects get stringified
+    return { stringValue: JSON.stringify(value) };
+}
+
+/**
+ * Flatten nested objects into dot-notation keys
+ * e.g., { output: { success: true, id: 123 } } becomes { 'output.success': true, 'output.id': 123 }
+ */
+function flattenAttributes(obj: Record<string, any>, prefix = ''): Record<string, any> {
+    const result: Record<string, any> = {};
+
+    for (const [key, value] of Object.entries(obj)) {
+        const newKey = prefix ? `${prefix}.${key}` : key;
+
+        if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+            // Recursively flatten nested objects
+            Object.assign(result, flattenAttributes(value, newKey));
+        } else {
+            result[newKey] = value;
+        }
     }
-    return { stringValue: String(value) };
+
+    return result;
 }
 
 /**
@@ -56,6 +74,9 @@ export function emitLog(
 
     const timeUnixNano = String(Date.now() * 1_000_000);
 
+    // Flatten nested objects into dot-notation keys
+    const flatAttrs = flattenAttributes(attributes || {});
+
     const otlpPayload = {
         resourceLogs: [{
             resource: {
@@ -71,7 +92,7 @@ export function emitLog(
                     severityNumber: SEVERITY[level],
                     severityText: level,
                     body: { stringValue: message },
-                    attributes: Object.entries(attributes || {}).map(([key, value]) => ({
+                    attributes: Object.entries(flatAttrs).map(([key, value]) => ({
                         key,
                         value: toOtlpValue(value),
                     })),
