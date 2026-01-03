@@ -14,6 +14,7 @@ import {
     logTransactionProcessed,
     logError,
 } from '@/shared/utils/logger';
+import { otelLog } from '@/shared/utils/otel-logger';
 import { getAccountId, isAllowedApp } from '@/shared/config/config';
 import { tracer } from '@/shared/utils/tracing';
 import { addSpanAttributes, setSpanStatus } from '@/shared/utils/tracing-utils';
@@ -64,7 +65,18 @@ export class TransactionProcessor {
                     hasGPS: !!(payload.latitude && payload.longitude),
                 });
 
-                // Step 1: Filter - Check if app is allowed
+                // === STEP 1: Filter - Check if app is allowed ===
+                otelLog.info('Step 1: Filter - Starting', {
+                    step: 'filter',
+                    phase: 'input',
+                    input: {
+                        app_name: payload.app_name,
+                        notification_text: payload.notification_text,
+                        timestamp: payload.timestamp,
+                        has_gps: !!(payload.latitude && payload.longitude),
+                    },
+                });
+
                 const filterSpan = tracer.startSpan('transaction.filter', {
                     attributes: {
                         'filter.app_name': payload.app_name,
@@ -72,12 +84,28 @@ export class TransactionProcessor {
                 });
 
                 const isAllowed = this.filterByApp(payload.app_name);
+
+                otelLog.info('Step 1: Filter - Complete', {
+                    step: 'filter',
+                    phase: 'output',
+                    input_app: payload.app_name,
+                    output: {
+                        is_allowed: isAllowed,
+                        action: isAllowed ? 'continue' : 'reject',
+                    },
+                });
+
                 addSpanAttributes(filterSpan, {
                     'filter.result': isAllowed,
                 });
                 filterSpan.end();
 
                 if (!isAllowed) {
+                    otelLog.warn('Pipeline stopped: App not allowed', {
+                        step: 'filter',
+                        app_name: payload.app_name,
+                        result: 'rejected',
+                    });
                     setSpanStatus(span, false, `App '${payload.app_name}' is not in the allowed list`);
                     span.end();
                     return {
@@ -86,7 +114,16 @@ export class TransactionProcessor {
                     };
                 }
 
-                // Step 2: AI Extraction - Parse notification text
+                // === STEP 2: AI Extraction - Parse notification text ===
+                otelLog.info('Step 2: AI Extraction - Starting', {
+                    step: 'ai_extraction',
+                    phase: 'input',
+                    input: {
+                        notification_text: payload.notification_text,
+                        app_name: payload.app_name,
+                    },
+                });
+
                 const aiSpan = tracer.startSpan('transaction.ai_extract', {
                     attributes: {
                         'ai.notification_text': payload.notification_text,
@@ -96,6 +133,21 @@ export class TransactionProcessor {
                 const extracted = await this.aiAdapter.extractTransactionData(
                     payload.notification_text
                 );
+
+                otelLog.info('Step 2: AI Extraction - Complete', {
+                    step: 'ai_extraction',
+                    phase: 'output',
+                    input_text: payload.notification_text.substring(0, 100),
+                    output: {
+                        is_transaction: extracted.is_transaction,
+                        confidence: extracted.confidence,
+                        amount: extracted.amount,
+                        merchant: extracted.merchant,
+                        category: extracted.category,
+                        currency: extracted.currency,
+                        reference: extracted.reference,
+                    },
+                });
 
                 addSpanAttributes(aiSpan, {
                     'ai.is_transaction': extracted.is_transaction,
@@ -108,6 +160,12 @@ export class TransactionProcessor {
 
                 // Step 2.5: Confidence Filter - Only process actual transactions
                 if (!extracted.is_transaction) {
+                    otelLog.warn('Pipeline stopped: Not a transaction', {
+                        step: 'ai_extraction',
+                        is_transaction: false,
+                        confidence: extracted.confidence,
+                        result: 'rejected',
+                    });
                     logger.info({
                         event: 'filter.not_transaction',
                         appName: payload.app_name,
@@ -124,6 +182,12 @@ export class TransactionProcessor {
 
                 const MIN_CONFIDENCE = 0.4;
                 if (extracted.confidence && extracted.confidence < MIN_CONFIDENCE) {
+                    otelLog.warn('Pipeline stopped: Low confidence', {
+                        step: 'ai_extraction',
+                        confidence: extracted.confidence,
+                        threshold: MIN_CONFIDENCE,
+                        result: 'rejected',
+                    });
                     logger.warn({
                         event: 'filter.low_confidence',
                         appName: payload.app_name,
@@ -139,7 +203,15 @@ export class TransactionProcessor {
                     };
                 }
 
-                // Step 3: Account Mapping - Resolve account ID
+                // === STEP 3: Account Mapping - Resolve account ID ===
+                otelLog.info('Step 3: Account Mapping - Starting', {
+                    step: 'account_mapping',
+                    phase: 'input',
+                    input: {
+                        app_name: payload.app_name,
+                    },
+                });
+
                 const accountSpan = tracer.startSpan('transaction.account_mapping', {
                     attributes: {
                         'account.app_name': payload.app_name,
@@ -147,8 +219,24 @@ export class TransactionProcessor {
                 });
 
                 const accountId = getAccountId(payload.app_name);
+
+                otelLog.info('Step 3: Account Mapping - Complete', {
+                    step: 'account_mapping',
+                    phase: 'output',
+                    input_app: payload.app_name,
+                    output: {
+                        account_id: accountId || null,
+                        found: !!accountId,
+                    },
+                });
+
                 if (!accountId) {
                     const error = `No account mapping found for app '${payload.app_name}'`;
+                    otelLog.error('Pipeline stopped: No account mapping', {
+                        step: 'account_mapping',
+                        app_name: payload.app_name,
+                        result: 'rejected',
+                    });
                     logger.error({ event: 'account.mapping.missing', appName: payload.app_name }, error);
 
                     setSpanStatus(accountSpan, false, error);
@@ -166,9 +254,18 @@ export class TransactionProcessor {
                 });
                 accountSpan.end();
 
-                // Step 4: Location Enrichment (optional)
+                // === STEP 4: Location Enrichment (optional) ===
                 let locationNote = '';
                 if (payload.latitude && payload.longitude) {
+                    otelLog.info('Step 4: Location Enrichment - Starting', {
+                        step: 'location_enrichment',
+                        phase: 'input',
+                        input: {
+                            latitude: payload.latitude,
+                            longitude: payload.longitude,
+                        },
+                    });
+
                     const locationSpan = tracer.startSpan('transaction.location_enrichment', {
                         attributes: {
                             'location.latitude': payload.latitude,
@@ -184,12 +281,27 @@ export class TransactionProcessor {
                         );
                         locationNote = `\nLocation: ${location}`;
 
+                        otelLog.info('Step 4: Location Enrichment - Complete', {
+                            step: 'location_enrichment',
+                            phase: 'output',
+                            input_coords: `${payload.latitude}, ${payload.longitude}`,
+                            output: {
+                                address: location,
+                                success: true,
+                            },
+                        });
+
                         addSpanAttributes(locationSpan, {
                             'location.address': location,
                         });
                         setSpanStatus(locationSpan, true);
                     } catch (error) {
-                        // Non-critical failure - continue without location
+                        otelLog.warn('Step 4: Location Enrichment - Failed (non-critical)', {
+                            step: 'location_enrichment',
+                            phase: 'output',
+                            error: error instanceof Error ? error.message : 'Unknown error',
+                            result: 'skipped',
+                        });
                         logger.warn({
                             event: 'location.enrichment.failed',
                             error,
@@ -199,9 +311,27 @@ export class TransactionProcessor {
                     } finally {
                         locationSpan.end();
                     }
+                } else {
+                    otelLog.info('Step 4: Location Enrichment - Skipped', {
+                        step: 'location_enrichment',
+                        phase: 'skipped',
+                        reason: 'No GPS coordinates provided',
+                    });
                 }
 
-                // Step 5: Build transaction
+                // === STEP 5: Build Transaction ===
+                otelLog.info('Step 5: Build Transaction - Starting', {
+                    step: 'build_transaction',
+                    phase: 'input',
+                    input: {
+                        amount: extracted.amount,
+                        merchant: extracted.merchant,
+                        account_id: accountId,
+                        category: extracted.category,
+                        has_location: !!locationNote,
+                    },
+                });
+
                 const transaction: Transaction = {
                     date: payload.timestamp,
                     amount: extracted.amount,
@@ -218,7 +348,30 @@ export class TransactionProcessor {
                     currency: extracted.currency?.toLowerCase() || 'myr',
                 };
 
-                // Step 6: Budget Sync - Create transaction
+                otelLog.info('Step 5: Build Transaction - Complete', {
+                    step: 'build_transaction',
+                    phase: 'output',
+                    output: {
+                        date: transaction.date,
+                        amount: transaction.amount,
+                        payee: transaction.payee,
+                        account_id: transaction.account_id,
+                        category: transaction.category,
+                        currency: transaction.currency,
+                    },
+                });
+
+                // === STEP 6: Budget Sync - Create transaction ===
+                otelLog.info('Step 6: Budget Sync - Starting', {
+                    step: 'budget_sync',
+                    phase: 'input',
+                    input: {
+                        amount: transaction.amount,
+                        payee: transaction.payee,
+                        account_id: transaction.account_id,
+                    },
+                });
+
                 const budgetSpan = tracer.startSpan('transaction.budget_sync', {
                     attributes: {
                         'budget.amount': transaction.amount,
@@ -229,6 +382,17 @@ export class TransactionProcessor {
 
                 const result = await this.budgetAdapter.createTransaction(transaction);
 
+                otelLog.info('Step 6: Budget Sync - Complete', {
+                    step: 'budget_sync',
+                    phase: 'output',
+                    input_amount: transaction.amount,
+                    output: {
+                        success: result.success,
+                        transaction_id: result.transactionId,
+                        error: result.error || null,
+                    },
+                });
+
                 addSpanAttributes(budgetSpan, {
                     'budget.transaction_id': result.transactionId || 'unknown',
                     'budget.success': result.success,
@@ -238,6 +402,17 @@ export class TransactionProcessor {
 
                 // Log success
                 const processingTime = (performance.now() - startTime) / 1000; // Convert to seconds
+
+                otelLog.info('Pipeline Complete: Transaction processed', {
+                    step: 'complete',
+                    phase: 'summary',
+                    transaction_id: result.transactionId,
+                    merchant: extracted.merchant,
+                    amount: extracted.amount,
+                    processing_time_seconds: processingTime,
+                    success: result.success,
+                });
+
                 logTransactionProcessed({
                     transactionId: result.transactionId || 'unknown',
                     merchant: extracted.merchant,
