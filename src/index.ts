@@ -1,5 +1,7 @@
 // IMPORTANT: Import tracing FIRST to enable auto-instrumentation
 import './shared/utils/tracing';
+// Initialize OTLP log export
+import './shared/utils/otel-logger';
 
 import { createApp } from './api/app';
 import { createRoutes } from './api/routes';

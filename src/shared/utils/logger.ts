@@ -1,7 +1,48 @@
 import pino from 'pino';
-import { Writable } from 'stream';
 import type { LogContext } from '../types/common.types';
 import { pinoToOTLP } from './otlp-log-destination';
+
+// OTLP endpoint for log export
+const OTLP_ENDPOINT = process.env.OTEL_EXPORTER_OTLP_ENDPOINT;
+
+/**
+ * Send log to OTLP endpoint (fire and forget)
+ */
+function sendLogToOTLP(logLine: string) {
+    if (!OTLP_ENDPOINT) return;
+
+    try {
+        const parsed = JSON.parse(logLine);
+        const otlpLog = pinoToOTLP(parsed);
+
+        fetch(`${OTLP_ENDPOINT}/v1/logs`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(otlpLog),
+        }).catch(err => {
+            // Log to stderr to avoid infinite loop
+            process.stderr.write(`[OTLP] Failed to send log: ${err}\n`);
+        });
+    } catch {
+        // Silently fail for parse errors
+    }
+}
+
+/**
+ * Custom destination that sends to both stdout and OTLP
+ */
+function createOTLPDestination() {
+    return {
+        write(logLine: string) {
+            // Write to stdout
+            process.stdout.write(logLine);
+            // Send to OTLP asynchronously
+            sendLogToOTLP(logLine);
+        },
+    };
+}
 
 /**
  * Create a logger instance with appropriate configuration
@@ -9,9 +50,8 @@ import { pinoToOTLP } from './otlp-log-destination';
 function createLogger() {
     const isDevelopment = process.env.NODE_ENV === 'development';
     const logLevel = process.env.LOG_LEVEL || 'info';
-    const otlpEndpoint = process.env.OTEL_EXPORTER_OTLP_ENDPOINT;
 
-    const baseConfig = {
+    const baseConfig: pino.LoggerOptions = {
         level: logLevel,
         // Base fields for all logs
         base: {
@@ -36,39 +76,12 @@ function createLogger() {
         });
     }
 
-    // Production: Send logs to both console and OTLP endpoint
-    if (otlpEndpoint) {
-        // Create a writable stream for OTLP
-        const otlpStream = new Writable({
-            write(chunk, _encoding, callback) {
-                const log = chunk.toString();
-                try {
-                    const parsed = JSON.parse(log);
-                    const otlpLog = pinoToOTLP(parsed);
-
-                    fetch(`${otlpEndpoint}/v1/logs`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify(otlpLog),
-                    }).catch(err => console.error('[OTLP] Failed to send log:', err));
-                } catch (error) {
-                    // Silently fail
-                }
-                callback();
-            },
-        });
-
-        const streams = [
-            { stream: process.stdout },
-            { stream: otlpStream },
-        ];
-
-        return pino(baseConfig, pino.multistream(streams));
+    // Production: Use custom destination for OTLP export
+    if (OTLP_ENDPOINT) {
+        return pino(baseConfig, createOTLPDestination() as any);
     }
 
-    // Fallback: Standard JSON output with trace context
+    // Fallback: Standard JSON output
     return pino(baseConfig);
 }
 

@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import type { TransactionProcessor } from '../transaction-processor.service';
 import { validateWebhookPayload } from '@/shared/utils/validators';
 import { logger } from '@/shared/utils/logger';
+import { otelLog } from '@/shared/utils/otel-logger';
 import { ZodError } from 'zod';
 import { transformNotificationPayload } from './transformers';
 import { tracer } from '@/shared/utils/tracing';
@@ -53,6 +54,10 @@ export function createWebhookRoutes(processor: TransactionProcessor) {
                         'user-agent': c.req.header('user-agent'),
                     },
                 }, 'Received notification webhook payload');
+                otelLog.info('Received notification webhook payload', {
+                    event: 'webhook.notification.payload.received',
+                    raw_payload: body,
+                });
 
                 // Transform payload to standard format
                 const transformedBody = transformNotificationPayload(body);
@@ -67,6 +72,10 @@ export function createWebhookRoutes(processor: TransactionProcessor) {
                     event: 'webhook.notification.payload.transformed',
                     transformed_payload: transformedBody,
                 }, 'Transformed notification webhook payload');
+                otelLog.info('Transformed notification webhook payload', {
+                    event: 'webhook.notification.payload.transformed',
+                    transformed_payload: transformedBody,
+                });
 
                 // Validate transformed payload
                 const payload = validateWebhookPayload(transformedBody);
@@ -83,6 +92,10 @@ export function createWebhookRoutes(processor: TransactionProcessor) {
                     event: 'webhook.notification.payload.validated',
                     validated_payload: payload,
                 }, 'Validated notification webhook payload');
+                otelLog.info('Validated notification webhook payload', {
+                    event: 'webhook.notification.payload.validated',
+                    app_name: payload.app_name,
+                });
 
                 // Process transaction asynchronously (fire-and-forget)
                 // We respond immediately to MacroDroid, processing happens in background
