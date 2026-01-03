@@ -18,6 +18,29 @@ const SEVERITY = {
 type LogLevel = keyof typeof SEVERITY;
 
 /**
+ * Convert a value to OTLP attribute value format
+ */
+function toOtlpValue(value: any): any {
+    if (typeof value === 'string') {
+        return { stringValue: value };
+    }
+    if (typeof value === 'number') {
+        return Number.isInteger(value) ? { intValue: value } : { doubleValue: value };
+    }
+    if (typeof value === 'boolean') {
+        return { boolValue: value };
+    }
+    if (Array.isArray(value)) {
+        return { arrayValue: { values: value.map(v => toOtlpValue(v)) } };
+    }
+    if (typeof value === 'object' && value !== null) {
+        // For objects, flatten to stringified JSON
+        return { stringValue: JSON.stringify(value) };
+    }
+    return { stringValue: String(value) };
+}
+
+/**
  * Emit a log record directly to OTLP endpoint
  */
 export function emitLog(
@@ -50,7 +73,7 @@ export function emitLog(
                     body: { stringValue: message },
                     attributes: Object.entries(attributes || {}).map(([key, value]) => ({
                         key,
-                        value: { stringValue: typeof value === 'string' ? value : JSON.stringify(value) },
+                        value: toOtlpValue(value),
                     })),
                     traceId: spanContext?.traceId || '',
                     spanId: spanContext?.spanId || '',
