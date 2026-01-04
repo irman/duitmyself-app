@@ -138,6 +138,24 @@ class AIExtractionError extends Error {
 
 ## 3. Development Guidelines
 
+### Git Workflow
+
+**Commit and Push Policy**:
+- ⚠️ **NEVER commit or push code without explicit user confirmation first**
+- Always ask the user to review changes before committing
+- Present a summary of what will be committed and wait for approval
+
+**Commit Message Format**:
+- **MUST** follow [Conventional Commits](https://www.conventionalcommits.org/) specification
+- Format: `<type>(<scope>): <description>`
+- Types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`
+- Examples:
+  - `feat(expense-tracker): add YNAB adapter support`
+  - `fix(webhook): handle missing GPS coordinates gracefully`
+  - `docs(readme): update deployment instructions`
+  - `refactor(ai): extract prompt to separate config file`
+  - `chore(deps): update dependencies to latest versions`
+
 ### Adding a New Budget Provider (e.g., YNAB)
 
 1. **Create the adapter**:
