@@ -37,11 +37,11 @@ export interface ExtractedTransaction {
     /** Whether this is actually a transaction (not just a notification) */
     is_transaction: boolean;
     /** Transaction amount (positive for debit, negative for credit) */
-    amount: number;
+    amount?: number | undefined;
     /** Merchant or payee name */
-    merchant: string;
+    merchant?: string | undefined;
     /** Transaction type */
-    type: TransactionType;
+    type?: TransactionType | undefined;
     /** Currency code (e.g., MYR, USD) */
     currency?: string | undefined;
     /** Optional category */

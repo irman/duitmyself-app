@@ -49,9 +49,9 @@ export const envSchema = z.object({
  */
 export const extractedTransactionSchema = z.object({
     is_transaction: z.boolean(),
-    amount: z.number(),
-    merchant: z.string().min(1),
-    type: z.enum(['debit', 'credit']),
+    amount: z.number().optional(),
+    merchant: z.string().min(1).optional(),
+    type: z.enum(['debit', 'credit']).optional(),
     currency: z.string().optional(),
     category: z.string().optional(),
     reference: z.string().optional(),

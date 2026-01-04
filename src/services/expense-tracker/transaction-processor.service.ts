@@ -334,8 +334,8 @@ export class TransactionProcessor {
 
                 const transaction: Transaction = {
                     date: payload.timestamp,
-                    amount: extracted.amount,
-                    payee: extracted.merchant,
+                    amount: extracted.amount!, // Non-null: verified is_transaction is true
+                    payee: extracted.merchant!, // Non-null: verified is_transaction is true
                     account_id: accountId,
                     category: extracted.category,
                     notes: [
@@ -415,8 +415,8 @@ export class TransactionProcessor {
 
                 logTransactionProcessed({
                     transactionId: result.transactionId || 'unknown',
-                    merchant: extracted.merchant,
-                    amount: extracted.amount,
+                    merchant: extracted.merchant!, // Non-null: verified is_transaction is true
+                    amount: extracted.amount!, // Non-null: verified is_transaction is true
                     processingTime,
                 });
 
