@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { logger as honoLogger } from 'hono/logger';
 import { logger } from '@/shared/utils/logger';
+import { wideEventMiddleware } from '@/shared/middleware/wide-event.middleware';
 
 /**
  * Create and configure the main Hono application
@@ -18,10 +18,8 @@ export function createApp() {
         allowHeaders: ['Content-Type', 'Authorization'],
     }));
 
-    // Request logging middleware
-    app.use('/*', honoLogger((message) => {
-        logger.info({ event: 'http.request' }, message);
-    }));
+    // Wide Event middleware - emits single canonical log line per request
+    app.use('/*', wideEventMiddleware());
 
     // Error handling middleware
     app.onError((err, c) => {

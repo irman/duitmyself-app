@@ -99,21 +99,136 @@ This expense tracker is the **first service** in what will become a larger finan
 
 **Alternative considered**: `axios` (more mature, but heavier and less modern).
 
-### Logging Strategy
+### Logging Strategy: Wide Events Pattern
 
-**Decision**: Structured JSON logging with pino.
+**Decision**: Use the "wide events" pattern with Pino + OpenTelemetry + SigNoz.
 
-**Rationale**:
-- **Dokploy-friendly**: JSON logs are easily parsed and filtered in log aggregators
-- **Contextual**: Each log entry includes request ID, transaction ID, and relevant metadata
-- **Performance**: Pino is one of the fastest Node.js loggers
-- **Development-friendly**: Pretty-printing in development mode for readability
+**What are Wide Events?**
+
+Based on [loggingsucks.com](https://loggingsucks.com/), wide events are single, context-rich log entries emitted per request that contain ALL relevant business and technical context in one place.
+
+**Before** (old approach - 17+ log lines per request):
+```
+{"level":"info","msg":"Webhook received","appName":"Grab"}
+{"level":"info","msg":"Payload transformed"}
+{"level":"info","msg":"Payload validated"}
+{"level":"info","msg":"Filter passed","appName":"Grab"}
+{"level":"info","msg":"AI extraction started"}
+{"level":"info","msg":"AI extraction complete","amount":45.50}
+... 11 more logs ...
+```
+
+**After** (wide events - 1 log line per request):
+```json
+{
+  "level":"info",
+  "timestamp":"2026-01-06T01:00:00Z",
+  "request_id":"req_8bf7ec2d",
+  "trace_id":"abc123",
+  "service":"duitmyself-app",
+  "http":{"method":"POST","path":"/webhook/notification","status_code":200},
+  "outcome":"success",
+  "duration_ms":1247,
+  "app":{"name":"Grab","allowed":true,"account_id":"123"},
+  "transaction":{"amount":45.50,"merchant":"Starbucks","category":"Food & Dining"},
+  "ai":{"confidence":0.95,"is_transaction":true,"extraction_time_ms":234},
+  "location":{"latitude":3.1390,"longitude":101.6869,"address":"KL","lookup_success":true},
+  "external_apis":{
+    "gemini":{"latency_ms":234,"success":true,"retry_count":0},
+    "lunch_money":{"latency_ms":456,"success":true,"retry_count":0}
+  }
+}
+```
+
+**Benefits**:
+- **Queryability**: Answer complex questions instantly ("show me all Grab transactions over RM 50")
+- **Debugging**: Full request context in one place (no grep-ing through multiple logs)
+- **Cost**: 80%+ reduction in log volume
+- **Performance**: Fewer log writes, less I/O
+- **Correlation**: Automatic trace_id/span_id correlation with OpenTelemetry
+
+**Implementation**:
+
+1. **Middleware** (`wide-event.middleware.ts`): Automatically creates wide event for each HTTP request
+2. **Enrichment**: Route handlers and services enrich the wide event throughout processing
+3. **Emission**: Middleware emits single log line in `finally` block
+
+**Example Usage**:
+```typescript
+// In route handler
+app.post('/webhook/notification', async (c) => {
+  const wideEvent = getWideEvent(c);
+  
+  // Enrich with webhook context
+  wideEvent.webhook = {
+    payload_type: 'notification',
+    has_gps: true,
+  };
+  
+  // Process transaction (enriches wide event further)
+  await processor.processTransaction(payload, wideEvent);
+  
+  // Wide event automatically emitted by middleware
+  return c.json({ success: true });
+});
+```
 
 **Log Levels**:
-- `debug`: Detailed flow information (AI prompts, API responses)
-- `info`: Normal operations (transaction processed, webhook received)
-- `warn`: Recoverable issues (API retry, missing optional data)
-- `error`: Failures requiring attention (API errors, validation failures)
+- `info`: Wide events for successful requests
+- `warn`: Wide events for rejected/filtered requests
+- `error`: Wide events for failed requests + critical errors
+
+**SigNoz Query Examples**:
+
+Find all failed transactions in last 24h:
+```
+outcome = 'error' AND transaction.amount > 0
+```
+
+Find low-confidence AI extractions:
+```
+ai.confidence < 0.6 AND ai.is_transaction = true
+```
+
+Find slow Gemini API calls:
+```
+external_apis.gemini.latency_ms > 2000
+```
+
+Find transactions from specific merchant:
+```
+transaction.merchant = 'Starbucks' AND outcome = 'success'
+```
+
+Find all Grab transactions over RM 50:
+```
+app.name = 'Grab' AND transaction.amount > 50
+```
+
+Find requests with failed location lookups:
+```
+location.lookup_success = false AND location.latitude IS NOT NULL
+```
+
+**When to Use Wide Events vs Traditional Logs**:
+
+✅ **Use Wide Events**:
+- HTTP requests (webhook, API endpoints)
+- Cron jobs (CC statements)
+- Any request/job lifecycle
+
+❌ **Use Traditional Logs**:
+- Critical errors that need immediate attention
+- Startup/shutdown events
+- Adapter validation failures
+
+**Development Mode**:
+
+In development (`NODE_ENV=development`), Pino uses pretty-printing for readability. Wide events are still emitted but formatted nicely in the console.
+
+**Production Mode**:
+
+In production, wide events are emitted as JSON and sent to SigNoz via OTLP. The `trace_id` and `span_id` fields enable correlation between logs and traces.
 
 ### Error Handling Approach
 

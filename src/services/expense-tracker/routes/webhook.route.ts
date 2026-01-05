@@ -2,12 +2,12 @@ import { Hono } from 'hono';
 import type { TransactionProcessor } from '../transaction-processor.service';
 import { validateWebhookPayload } from '@/shared/utils/validators';
 import { logger } from '@/shared/utils/logger';
-import { otelLog } from '@/shared/utils/otel-logger';
 import { ZodError } from 'zod';
 import { transformNotificationPayload } from './transformers';
 import { tracer } from '@/shared/utils/tracing';
 import { addSpanAttributes, setSpanStatus } from '@/shared/utils/tracing-utils';
 import { trace, context } from '@opentelemetry/api';
+import { getWideEvent } from '@/shared/middleware/wide-event.middleware';
 
 /**
  * Create webhook routes
@@ -30,6 +30,9 @@ export function createWebhookRoutes(processor: TransactionProcessor) {
 
         return await context.with(trace.setSpan(context.active(), span), async () => {
             try {
+                // Get wide event for enrichment
+                const wideEvent = getWideEvent(c);
+
                 // Add request metadata to span
                 addSpanAttributes(span, {
                     'http.method': 'POST',
@@ -45,40 +48,20 @@ export function createWebhookRoutes(processor: TransactionProcessor) {
                     'payload.raw': JSON.stringify(body),
                 });
 
-                // Log raw incoming payload for debugging
-                logger.info({
-                    event: 'webhook.notification.payload.received',
-                    raw_payload: body,
-                    headers: {
-                        'content-type': c.req.header('content-type'),
-                        'user-agent': c.req.header('user-agent'),
-                    },
-                }, 'Received notification webhook payload');
-                otelLog.info('Received notification webhook payload', {
-                    event: 'webhook.notification.payload.received',
-                    raw_payload: body,
-                });
-
                 // Transform payload to standard format
                 const transformedBody = transformNotificationPayload(body);
 
-                // Add transformed payload to span
-                span.addEvent('webhook.payload.transformed', {
-                    'payload.transformed': JSON.stringify(transformedBody),
-                });
-
-                // Log transformed payload
-                logger.info({
-                    event: 'webhook.notification.payload.transformed',
-                    transformed_payload: transformedBody,
-                }, 'Transformed notification webhook payload');
-                otelLog.info('Transformed notification webhook payload', {
-                    event: 'webhook.notification.payload.transformed',
-                    transformed_payload: transformedBody,
-                });
-
                 // Validate transformed payload
                 const payload = validateWebhookPayload(transformedBody);
+
+                // Enrich wide event with webhook context
+                if (wideEvent) {
+                    wideEvent.webhook = {
+                        payload_type: 'notification',
+                        has_gps: !!(payload.latitude && payload.longitude),
+                        notification_text: payload.notification_text.substring(0, 100), // Truncate for log size
+                    };
+                }
 
                 // Add validated payload attributes to span
                 addSpanAttributes(span, {
@@ -87,19 +70,9 @@ export function createWebhookRoutes(processor: TransactionProcessor) {
                     'webhook.timestamp': payload.timestamp,
                 });
 
-                // Log validated payload
-                logger.info({
-                    event: 'webhook.notification.payload.validated',
-                    validated_payload: payload,
-                }, 'Validated notification webhook payload');
-                otelLog.info('Validated notification webhook payload', {
-                    event: 'webhook.notification.payload.validated',
-                    app_name: payload.app_name,
-                });
-
                 // Process transaction asynchronously (fire-and-forget)
                 // We respond immediately to MacroDroid, processing happens in background
-                processor.processTransaction(payload).catch((error) => {
+                processor.processTransaction(payload, wideEvent).catch((error) => {
                     logger.error({
                         event: 'transaction.processing.error',
                         error,
@@ -117,6 +90,9 @@ export function createWebhookRoutes(processor: TransactionProcessor) {
                     message: 'Notification webhook received, processing transaction',
                 });
             } catch (error) {
+                // Get wide event for error enrichment
+                const wideEvent = getWideEvent(c);
+
                 // Record error in span
                 setSpanStatus(span, false, error instanceof Error ? error.message : 'Unknown error');
                 if (error instanceof Error) {
@@ -126,10 +102,14 @@ export function createWebhookRoutes(processor: TransactionProcessor) {
 
                 // Validation error
                 if (error instanceof ZodError) {
-                    logger.warn({
-                        event: 'webhook.notification.validation.failed',
-                        errors: error.errors,
-                    }, 'Notification webhook payload validation failed');
+                    if (wideEvent) {
+                        wideEvent.error = {
+                            type: 'ValidationError',
+                            message: 'Invalid webhook payload',
+                            retriable: false,
+                            step: 'validation',
+                        };
+                    }
 
                     return c.json(
                         {
@@ -142,10 +122,14 @@ export function createWebhookRoutes(processor: TransactionProcessor) {
                 }
 
                 // Other errors
-                logger.error({
-                    event: 'webhook.notification.error',
-                    error,
-                }, 'Notification webhook endpoint error');
+                if (wideEvent && error instanceof Error) {
+                    wideEvent.error = {
+                        type: error.name,
+                        message: error.message,
+                        retriable: false,
+                        step: 'webhook_processing',
+                    };
+                }
 
                 return c.json(
                     {
