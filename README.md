@@ -1,8 +1,11 @@
 # 💰 duitmyself
 
-> **Automate your expense tracking** - Process banking app notifications and sync to budgeting platforms automatically.
+> **Automate your financial workflows** - Process banking notifications, manage credit card statements, and sync to budgeting platforms automatically.
 
-**duitmyself** (from Malay "duit" = money, "do-it-myself") is a TypeScript microservice that eliminates manual expense tracking by processing Android banking app notifications and creating transactions in your budgeting app.
+**duitmyself** (from Malay "duit" = money, "do-it-myself") is a TypeScript microservice platform that automates personal finance management:
+
+- **Expense Tracker**: Processes Android banking app notifications and creates transactions in your budgeting app
+- **CC Statement Manager**: Automates monthly credit card statement creation in Notion with Telegram reminders
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue.svg)](https://www.typescriptlang.org/)
 [![Bun](https://img.shields.io/badge/Bun-1.0-orange.svg)](https://bun.sh/)
@@ -13,6 +16,8 @@
 
 ## 🎯 What It Does
 
+### Expense Tracker
+
 1. **Receives** banking app notifications from MacroDroid (Android automation)
 2. **Extracts** transaction details using Gemini AI
 3. **Enriches** with location data from GPS coordinates
@@ -20,6 +25,16 @@
 5. **Logs** everything for debugging and monitoring
 
 **Result**: 90%+ reduction in manual expense tracking! 🎉
+
+### CC Statement Manager
+
+1. **Runs daily** at 1 AM via Dokploy cron scheduler
+2. **Fetches** credit cards from Notion database
+3. **Calculates** which month's statement to create
+4. **Creates** statement entries in Notion automatically
+5. **Notifies** you via Telegram with due dates
+
+**Result**: Never miss a credit card payment! 📅
 
 ---
 

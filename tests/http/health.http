@@ -1,0 +1,19 @@
+### Health Check
+GET http://localhost:3001/health
+
+###
+
+### Health Check - Production
+GET https://duitmyself.obliquetitan.com/health
+
+###
+
+### Metrics
+GET http://localhost:3001/metrics
+
+###
+
+### Metrics - Production
+GET https://duitmyself.obliquetitan.com/metrics
+
+###

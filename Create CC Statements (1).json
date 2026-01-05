@@ -1,0 +1,318 @@
+{
+  "name": "Create CC Statements",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 1
+            }
+          ]
+        }
+      },
+      "id": "cd0c0574-7319-456a-83cf-093d5ade4081",
+      "name": "Daily Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -800,
+        -32
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "operation": "getAll",
+        "databaseId": {
+          "__rl": true,
+          "value": "2354fc10333980c1bcd1e9f796486d6c",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "2b39740a-fa14-49c8-8bd0-f45163c8f9e0",
+      "name": "Get Credit Cards",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2,
+      "position": [
+        -576,
+        -128
+      ],
+      "credentials": {
+        "notionApi": {
+          "id": "cyh27QkwSok8BPM6",
+          "name": "Notion account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const TIMEZONE = 'Asia/Kuala_Lumpur';\nconst nowInKL = new Date().toLocaleString('en-US', { timeZone: TIMEZONE });\nconst now = new Date(nowInKL);\nconst currentMonth = now.getMonth() + 1;\nconst currentYear = now.getFullYear();\nconst currentDay = now.getDate();\n\nconst card = $input.item.json;\nconst cardId = card.id;\nconst cardName = card.property_name || card.name || 'Unnamed Card';\nconst statementDay = card.property_statement_day;\nconst dueInDays = card.property_due_in_days;\n\nconsole.log(`Processing: ${cardName}, Statement Day: ${statementDay}, Current Day: ${currentDay}`);\nconsole.log(`Current time: ${now.toISOString()}`);\n\nif (!statementDay) {\n  console.log(`❌ Skip: ${cardName} - no statement day`);\n  return { json: { skip: true, reason: 'No statement day', cardName } };\n}\n\n// Determine which month's statement to process\nlet statementMonth = currentMonth;\nlet statementYear = currentYear;\n\n// If statement day hasn't passed yet this month, use previous month\nif (currentDay < statementDay) {\n  statementMonth = currentMonth - 1;\n  if (statementMonth === 0) {\n    statementMonth = 12;\n    statementYear = currentYear - 1;\n  }\n}\n\nconst statementDate = new Date(statementYear, statementMonth - 1, statementDay);\nconst todayDate = new Date(currentYear, currentMonth - 1, currentDay);\n\nconsole.log(`Statement date: ${statementDate.toISOString().split('T')[0]}, Today: ${todayDate.toISOString().split('T')[0]}`);\n\nconst dueDate = new Date(statementDate);\ndueDate.setDate(dueDate.getDate() + dueInDays);\n\nconst monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];\nconst monthYear = `${monthNames[statementMonth - 1]} ${statementYear}`;\n\nconsole.log(`✅ Processing: ${cardName} - ${monthYear}`);\nconsole.log(`Due Date: ${dueDate.toISOString().split('T')[0]}`);\n\nreturn {\n  json: {\n    cardId,\n    cardName,\n    statementDate: statementDate.toISOString().split('T')[0],\n    dueDate: dueDate.toISOString().split('T')[0],\n    monthYear\n  }\n};"
+      },
+      "id": "8fd92046-2ccc-4c17-ac1f-fda743fda23c",
+      "name": "Process Eligible Cards",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -352,
+        -128
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "operation": "getAll",
+        "databaseId": {
+          "__rl": true,
+          "value": "2354fc1033398059b218d5c397f63698",
+          "mode": "id"
+        },
+        "returnAll": true,
+        "filterType": "manual",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "key": "Statement Date|date",
+              "condition": "on_or_after",
+              "date": "={{ DateTime.fromISO($json.timestamp).minus(1, 'month').startOf('month').toISODate() }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "ee3ff53e-4f24-417a-9f90-b858283d20d4",
+      "name": "Get Existing Statements (Current Month)",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2,
+      "position": [
+        -576,
+        64
+      ],
+      "credentials": {
+        "notionApi": {
+          "id": "cyh27QkwSok8BPM6",
+          "name": "Notion account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "fieldsToMatchString": "cardId, statementDate",
+        "joinMode": "keepNonMatches",
+        "outputDataFrom": "input1",
+        "options": {}
+      },
+      "id": "65edd5c1-8882-4164-9052-0717c95b9091",
+      "name": "Remove Duplicates",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        -128,
+        -32
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "databaseId": {
+          "__rl": true,
+          "value": "2354fc1033398059b218d5c397f63698",
+          "mode": "id"
+        },
+        "title": "={{ $json.monthYear }}",
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "Card|relation",
+              "relationValue": [
+                "={{ $json.cardId }}"
+              ]
+            },
+            {
+              "key": "Statement Date|date",
+              "includeTime": false,
+              "date": "={{ $json.statementDate }}"
+            },
+            {
+              "key": "Name|title",
+              "title": "={{ $json.cardName }}: {{ $json.monthYear }}"
+            },
+            {
+              "key": "Statement Due|date",
+              "includeTime": false,
+              "date": "={{ $json.dueDate }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c31daa74-0299-4d99-9717-d02fbe8ae42a",
+      "name": "Create Statement",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2,
+      "position": [
+        96,
+        -32
+      ],
+      "credentials": {
+        "notionApi": {
+          "id": "cyh27QkwSok8BPM6",
+          "name": "Notion account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d3151c38-54b6-4195-be48-29037db4365d",
+              "name": "cardId",
+              "value": "={{ $json.property_card[0] }}",
+              "type": "string"
+            },
+            {
+              "id": "290f82a7-ee64-4482-b178-3c70c745f543",
+              "name": "statementDate",
+              "value": "={{ $json.property_statement_date.start }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -352,
+        64
+      ],
+      "id": "4974f77a-baa2-40c1-ac13-7e5541bea2dc",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "chatId": "1053248458",
+        "text": "=Created {{ $json.name.replace(/([_*\\[\\]()~`>#+=|{}.!\\\\])/g, '\\\\$1') }} CC Statement\n\nDue: **{{ $json.property_statement_due.start }}**\n\nOpen [Finance](https://www.notion.so/irman/2354fc1033398059b218d5c397f63698?v=2354fc103339809ea58c000c8dc5527f&p=2364fc10333981fba980f5934101ad3f&pm=s) in Notion",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        304,
+        -32
+      ],
+      "id": "db99cab2-4e65-427b-a3d4-6cc499795269",
+      "name": "Send a text message",
+      "webhookId": "3d6f9cdb-dc30-4548-b663-fb7ed989edae",
+      "credentials": {
+        "telegramApi": {
+          "id": "SGmEQ2pdnx2PAlDk",
+          "name": "Telegram account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Daily Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Credit Cards",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get Existing Statements (Current Month)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Credit Cards": {
+      "main": [
+        [
+          {
+            "node": "Process Eligible Cards",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Eligible Cards": {
+      "main": [
+        [
+          {
+            "node": "Remove Duplicates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Existing Statements (Current Month)": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Remove Duplicates": {
+      "main": [
+        [
+          {
+            "node": "Create Statement",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Remove Duplicates",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Create Statement": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "d34b9051-26cd-464e-9c84-c6a7e8d72e19",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "5ced3024fc353104ea022d82f0647a4f9175264eee02e781dec450bf7e029d21"
+  },
+  "id": "c4ppbZhqwyk8ryC4",
+  "tags": []
+}

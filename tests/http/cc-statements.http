@@ -1,0 +1,11 @@
+### Trigger CC Statement Job - Local
+POST http://localhost:3001/jobs/cc-statements
+Content-Type: application/json
+
+###
+
+### Trigger CC Statement Job - Production
+POST https://duitmyself.obliquetitan.com/jobs/cc-statements
+Content-Type: application/json
+
+###

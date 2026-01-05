@@ -33,13 +33,17 @@ The microservice approach provides:
 
 This expense tracker is the **first service** in what will become a larger financial automation platform. The architecture reflects this:
 
-1. **Modular Service Structure**: Each financial workflow lives in its own service directory (`/services/expense-tracker`, future: `/services/bill-reminders`, etc.)
+1. **Modular Service Structure**: Each financial workflow lives in its own service directory (`/services/expense-tracker`, `/services/cc-statements`, future: `/services/bill-reminders`, etc.)
 
-2. **Adapter Pattern Everywhere**: All external dependencies (AI, budgeting platforms, geocoding) use adapters, making it trivial to swap providers or add new ones without touching business logic.
+2. **Adapter Pattern Everywhere**: All external dependencies (AI, budgeting platforms, geocoding, Notion, Telegram) use adapters, making it trivial to swap providers or add new ones without touching business logic.
 
 3. **Shared Utilities**: Common functionality (logging, validation, types) lives in `/shared` for reuse across services.
 
 4. **API Versioning**: Routes are versioned (`/api/v1/...`) to support future API evolution without breaking existing integrations.
+
+**Current Services**:
+- **expense-tracker**: Processes banking notifications and creates transactions in budgeting apps
+- **cc-statements**: Automates monthly credit card statement creation in Notion with Telegram notifications
 
 ---
 
@@ -692,7 +696,277 @@ try {
 
 ---
 
-## 8. Future Roadmap
+## 8. CC Statement Service
+
+### Overview
+
+The CC Statement Service automates the creation of monthly credit card statements in Notion. It's a scheduled job that runs daily at 1 AM (Asia/Kuala_Lumpur timezone) via Dokploy cron.
+
+**What it does**:
+1. Fetches all credit cards from Notion database
+2. Calculates which month's statement to create based on statement day
+3. Checks for existing statements to avoid duplicates
+4. Creates new statement entries in Notion
+5. Sends Telegram notification with due dates
+
+**Ported from**: n8n workflow "Create CC Statements"
+
+### Architecture
+
+```
+Dokploy Cron (1 AM daily)
+  ↓
+POST /jobs/cc-statements
+  ↓
+CCStatementService
+  ├→ NotionAdapter (fetch cards, create statements)
+  └→ TelegramAdapter (send notifications)
+```
+
+### Date Calculation Logic
+
+**Core algorithm** (ported from n8n):
+```javascript
+// If today's date < statement day → use previous month
+// If today's date >= statement day → use current month
+
+Example with statement day = 15:
+- On Jan 10 → Create Dec 2025 statement
+- On Jan 20 → Create Jan 2026 statement
+```
+
+**Implementation**:
+```typescript
+// In cc-statement.service.ts
+const currentDay = now.getDate();
+let statementMonth = currentMonth;
+let statementYear = currentYear;
+
+if (currentDay < card.statement_day) {
+  statementMonth = currentMonth - 1;
+  if (statementMonth === 0) {
+    statementMonth = 12;
+    statementYear = currentYear - 1;
+  }
+}
+```
+
+### Notion Database Structure
+
+#### Credit Cards Database
+- **Name** (Title): Card name (e.g., "Maybank Visa")
+- **Statement Day** (Number): Day of month when statement is generated (1-31)
+- **Due in Days** (Number): Days after statement date when payment is due
+
+#### Statements Database
+- **Name** (Title): Auto-generated as `{Card Name}: {Month Year}`
+- **Card** (Relation): Link to credit card
+- **Statement Date** (Date): When statement was generated
+- **Statement Due** (Date): Payment due date (calculated)
+
+### Configuration
+
+**Environment Variables**:
+```bash
+NOTION_API_KEY=ntn_xxx                    # Notion integration token
+NOTION_CC_DATABASE_ID=xxx                 # Credit cards database ID
+NOTION_STATEMENTS_DATABASE_ID=xxx         # Statements database ID
+TELEGRAM_BOT_TOKEN=xxx:yyy                # Telegram bot token
+TELEGRAM_CHAT_ID=123456789                # Your Telegram chat ID
+TIMEZONE=Asia/Kuala_Lumpur                # Timezone for date calculations
+```
+
+**Service is optional**: If `NOTION_API_KEY` or `TELEGRAM_BOT_TOKEN` are missing, the service won't initialize (expense tracker still works).
+
+### Dokploy Cron Setup
+
+**Create cron job in Dokploy**:
+1. Navigate to duitmyself project → Cron Jobs
+2. Create new job:
+   - **Name**: `cc-statements-daily`
+   - **Schedule**: `0 1 * * *` (1 AM daily)
+   - **Timezone**: `Asia/Kuala_Lumpur`
+   - **Command**: `curl -X POST http://duitmyself:3000/jobs/cc-statements`
+   - **Retry on failure**: Yes (3 retries)
+
+### Manual Triggering
+
+**Via API**:
+```bash
+curl -X POST https://duitmyself.obliquetitan.com/jobs/cc-statements
+```
+
+**Response**:
+```json
+{
+  "success": true,
+  "message": "Successfully created 2 statement(s)",
+  "data": {
+    "statementsCreated": 2,
+    "duplicatesSkipped": 0,
+    "errors": []
+  }
+}
+```
+
+### Modifying Statement Logic
+
+**Common modifications**:
+
+1. **Change statement day calculation**:
+   - Edit `processEligibleCards()` in `cc-statement.service.ts`
+   - Adjust the date comparison logic
+
+2. **Add new Notion properties**:
+   - Update `NotionAdapter.createStatement()` to include new properties
+   - Add to the `properties` object in the API call
+
+3. **Customize notification format**:
+   - Edit `sendNotification()` in `cc-statement.service.ts`
+   - Modify the message template
+
+**Example - Add spending limit to statements**:
+```typescript
+// In notion.adapter.ts
+properties: {
+  // ... existing properties
+  'Spending Limit': {
+    number: statement.spendingLimit,
+  },
+}
+```
+
+### Troubleshooting
+
+#### Issue: No statements created
+
+**Possible causes**:
+1. No credit cards in Notion database
+2. All statements already exist (duplicates)
+3. Credit cards missing `Statement Day` property
+
+**Debug**:
+```bash
+# Check logs for skip events
+docker logs duitmyself | grep "cc_statement.skip_card"
+
+# Verify credit cards in Notion
+# Check that Statement Day is set for each card
+```
+
+#### Issue: Notion API errors
+
+**Possible causes**:
+1. Invalid API key
+2. Integration doesn't have access to databases
+3. Database IDs are incorrect
+
+**Debug**:
+```bash
+# Check adapter validation logs
+docker logs duitmyself | grep "notion.validate_credentials"
+
+# Verify database IDs match Notion URLs
+# Format: notion.so/{workspace}/{database_id}
+```
+
+#### Issue: Telegram notification not sent
+
+**Possible causes**:
+1. Invalid bot token
+2. Chat ID is incorrect
+3. Bot blocked by user
+
+**Debug**:
+```bash
+# Check Telegram adapter logs
+docker logs duitmyself | grep "telegram.send_message"
+
+# Test bot manually
+curl https://api.telegram.org/bot{TOKEN}/getMe
+
+# Get your chat ID
+# Message @userinfobot on Telegram
+```
+
+#### Issue: Wrong statement dates
+
+**Possible causes**:
+1. Timezone mismatch
+2. Statement day not set correctly
+3. Date calculation logic issue
+
+**Debug**:
+```bash
+# Check current timezone
+echo $TIMEZONE
+
+# Verify statement day in Notion
+# Check logs for date calculation
+docker logs duitmyself | grep "cc_statement.process_card"
+```
+
+### Adding New Features
+
+#### Add email notifications
+
+1. **Create email adapter**:
+   ```typescript
+   // src/services/cc-statements/adapters/email/email.adapter.ts
+   export class EmailAdapter {
+     async sendEmail(to: string, subject: string, body: string) {
+       // Implementation using SendGrid, SES, etc.
+     }
+   }
+   ```
+
+2. **Update service**:
+   ```typescript
+   // In cc-statement.service.ts
+   constructor(
+     private notionAdapter: NotionAdapter,
+     private telegramAdapter: TelegramAdapter,
+     private emailAdapter?: EmailAdapter  // Optional
+   ) {}
+   
+   // In sendNotification()
+   if (this.emailAdapter) {
+     await this.emailAdapter.sendEmail(/* ... */);
+   }
+   ```
+
+#### Add statement reminders
+
+1. **Create new job endpoint**: `POST /jobs/cc-statement-reminders`
+2. **Implement reminder logic**:
+   - Fetch statements with due date in next X days
+   - Send reminder notifications
+3. **Schedule in Dokploy**: Run daily at 9 AM
+
+### Observability
+
+**Traces** (in SigNoz):
+- `cc_statement.job.execute` - Main job span
+- `notion.get_credit_cards` - Fetch cards
+- `notion.create_statement` - Create each statement
+- `telegram.send_message` - Send notification
+
+**Logs** (searchable events):
+- `cc_statement.job.start`
+- `cc_statement.job.cards_fetched`
+- `cc_statement.created`
+- `cc_statement.duplicate_detected`
+- `cc_statement.job.complete`
+
+**Metrics** (from job result):
+- Statements created count
+- Duplicates skipped count
+- Errors count
+- Execution time
+
+---
+
+## 9. Future Roadmap
 
 ### Short-term (Next 3 months)
 - [ ] Add more banking apps (CIMB, Hong Leong Bank)

@@ -9,6 +9,9 @@ import { TransactionProcessor } from './services/expense-tracker/transaction-pro
 import { GeminiAdapter } from './services/expense-tracker/adapters/ai/gemini.adapter';
 import { LunchMoneyAdapter } from './services/expense-tracker/adapters/budget/lunch-money.adapter';
 import { LocationIQAdapter } from './services/expense-tracker/adapters/geocoding/locationiq.adapter';
+import { CCStatementService } from './services/cc-statements/cc-statement.service';
+import { NotionAdapterImpl } from './services/cc-statements/adapters/notion/notion.adapter';
+import { TelegramAdapterImpl } from './services/cc-statements/adapters/telegram/telegram.adapter';
 import { config, logConfigSummary } from './shared/config/config';
 import { logger } from './shared/utils/logger';
 
@@ -44,6 +47,41 @@ async function main() {
             locationIQAdapter
         );
 
+        // Initialize CC Statement Service (if credentials are provided)
+        let ccStatementService: CCStatementService | undefined;
+        if (process.env.NOTION_API_KEY && process.env.TELEGRAM_BOT_TOKEN) {
+            logger.info('Initializing CC Statement Service...');
+
+            const notionAdapter = new NotionAdapterImpl(
+                process.env.NOTION_API_KEY,
+                process.env.NOTION_CC_DATABASE_ID || '2354fc10333980c1bcd1e9f796486d6c',
+                process.env.NOTION_STATEMENTS_DATABASE_ID || '2354fc1033398059b218d5c397f63698'
+            );
+
+            const telegramAdapter = new TelegramAdapterImpl(
+                process.env.TELEGRAM_BOT_TOKEN,
+                process.env.TELEGRAM_CHAT_ID || '1053248458'
+            );
+
+            ccStatementService = new CCStatementService(notionAdapter, telegramAdapter);
+
+            // Validate CC statement adapters
+            const ccAdapterStatus = await ccStatementService.validateAdapters();
+            logger.info({
+                event: 'cc_statement.adapters.validated',
+                status: ccAdapterStatus,
+            }, 'CC Statement adapter validation complete');
+
+            if (!ccAdapterStatus.notion) {
+                logger.warn('Notion adapter validation failed - check NOTION_API_KEY');
+            }
+            if (!ccAdapterStatus.telegram) {
+                logger.warn('Telegram adapter validation failed - check TELEGRAM_BOT_TOKEN');
+            }
+        } else {
+            logger.info('CC Statement Service disabled - missing NOTION_API_KEY or TELEGRAM_BOT_TOKEN');
+        }
+
         // Validate adapters on startup
         logger.info('Validating adapter connections...');
         const adapterStatus = await transactionProcessor.validateAdapters();
@@ -66,7 +104,7 @@ async function main() {
 
         // Create and configure app
         const app = createApp();
-        const routes = createRoutes(transactionProcessor);
+        const routes = createRoutes(transactionProcessor, ccStatementService);
 
         // Mount routes
         app.route('/', routes);

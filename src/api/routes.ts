@@ -1,15 +1,18 @@
 import { Hono } from 'hono';
 import type { TransactionProcessor } from '@/services/expense-tracker/transaction-processor.service';
+import type { CCStatementService } from '@/services/cc-statements/cc-statement.service';
 import { createWebhookRoutes } from '@/services/expense-tracker/routes/webhook.route';
+import { createCCStatementRoutes } from '@/services/cc-statements/routes/cc-statement.route';
 import type { HealthCheckResponse } from '@/shared/types/common.types';
 
 /**
  * Create and configure all API routes
  * 
  * @param processor - Transaction processor instance
+ * @param ccStatementService - CC Statement service instance (optional)
  * @returns Hono app with all routes configured
  */
-export function createRoutes(processor: TransactionProcessor) {
+export function createRoutes(processor: TransactionProcessor, ccStatementService?: CCStatementService) {
     const app = new Hono();
 
     // Health check endpoint
@@ -50,6 +53,12 @@ export function createRoutes(processor: TransactionProcessor) {
     // Mount webhook routes
     const webhookRoutes = createWebhookRoutes(processor);
     app.route('/', webhookRoutes);
+
+    // Mount CC statement routes (if service is available)
+    if (ccStatementService) {
+        const ccStatementRoutes = createCCStatementRoutes(ccStatementService);
+        app.route('/', ccStatementRoutes);
+    }
 
     return app;
 }
