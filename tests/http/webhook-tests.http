@@ -1,0 +1,45 @@
+### Screenshot Webhook Test - ShopeePay Transaction
+POST http://localhost:3001/webhook/screenshot
+Content-Type: application/json
+
+{
+  "image_base64": "{{$dotenv SHOPEEPAY_SCREENSHOT_BASE64}}",
+  "app_package_name": "com.shopeepay.my",
+  "timestamp": "1767706329",
+  "latitude": "3.1390",
+  "longitude": "101.6869",
+  "metadata": {}
+}
+
+###
+
+### Screenshot Webhook Test - Localhost
+POST http://localhost:3000/webhook/screenshot
+Content-Type: application/json
+
+{
+  "image_base64": "{{$dotenv SHOPEEPAY_SCREENSHOT_BASE64}}",
+  "app_package_name": "com.shopeepay.my",
+  "timestamp": "1736150220000",
+  "latitude": "3.1390",
+  "longitude": "101.6869",
+  "metadata": {
+    "device": "Samsung Galaxy",
+    "screen_title": "Payment Successful"
+  }
+}
+
+###
+
+### Notification Webhook Test (existing)
+POST https://duitmyself.obliquetitan.com/webhook/notification
+Content-Type: application/json
+
+{
+  "app": "com.shopeepay.my",
+  "title": "Payment Successful",
+  "text": "You paid RM1.50 to FP-AEON",
+  "timestamp": "1736150220000",
+  "latitude": "3.1390",
+  "longitude": "101.6869"
+}

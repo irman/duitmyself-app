@@ -50,10 +50,42 @@ export interface EmailPayloadInput {
 }
 
 /**
- * Screenshot payload input (placeholder for future implementation)
+ * Screenshot payload input (MacroDroid format)
  */
 export interface ScreenshotPayloadInput {
-    image_url: string;
+    // Base64-encoded screenshot image
+    image_base64?: string;
+    image?: string; // Alternative field name
+
+    // App identification
+    app_package_name?: string;
+    package_name?: string; // Alternative field name
+    app_name?: string; // Fallback if package name not available
+
+    // Location (can be comma-separated string or separate fields)
+    location?: string; // e.g., "3.1390,101.6869"
+    latitude?: string;
+    longitude?: string;
+
+    // Timestamp
     timestamp?: string;
+
+    // Additional metadata
+    metadata?: {
+        device?: string;
+        screen_title?: string;
+        [key: string]: any;
+    };
+}
+
+/**
+ * Screenshot payload output (standard format)
+ */
+export interface ScreenshotPayloadOutput {
+    image_base64: string;
+    app_package_name: string;
+    timestamp: string;
+    latitude?: string;
+    longitude?: string;
     metadata?: Record<string, any>;
 }

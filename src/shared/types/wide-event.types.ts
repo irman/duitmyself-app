@@ -135,6 +135,7 @@ export interface WideEvent {
         payload_type: 'notification' | 'email' | 'screenshot';
         has_gps: boolean;
         notification_text?: string;
+        app_package_name?: string; // For screenshot webhooks
     };
 
     // ===== Feature Flags (future) =====

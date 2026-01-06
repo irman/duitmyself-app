@@ -31,6 +31,24 @@ export interface WebhookPayload {
 }
 
 /**
+ * Screenshot webhook payload from MacroDroid
+ */
+export interface ScreenshotWebhookPayload {
+    /** Base64-encoded screenshot image */
+    image_base64: string;
+    /** Android app package name (e.g., com.maybank2u.life) */
+    app_package_name: string;
+    /** ISO 8601 timestamp */
+    timestamp: string;
+    /** GPS latitude (optional) */
+    latitude?: string | undefined;
+    /** GPS longitude (optional) */
+    longitude?: string | undefined;
+    /** Additional metadata */
+    metadata?: Record<string, any>;
+}
+
+/**
  * Extracted transaction data from AI
  */
 export interface ExtractedTransaction {
@@ -52,6 +70,8 @@ export interface ExtractedTransaction {
     confidence?: number | undefined;
     /** Original notification text for notes */
     notes?: string | undefined;
+    /** Transaction date extracted from screenshot (ISO 8601) - only for screenshot webhooks */
+    transaction_date?: string | undefined;
 }
 
 /**

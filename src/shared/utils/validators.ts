@@ -13,6 +13,18 @@ export const webhookPayloadSchema = z.object({
 });
 
 /**
+ * Screenshot webhook payload validation schema
+ */
+export const screenshotWebhookPayloadSchema = z.object({
+    image_base64: z.string().min(1, 'Base64 image is required'),
+    app_package_name: z.string().min(1, 'App package name is required'),
+    timestamp: z.string().datetime('Invalid timestamp format'),
+    latitude: z.string().optional(),
+    longitude: z.string().optional(),
+    metadata: z.record(z.any()).optional(),
+});
+
+/**
  * Environment variables validation schema
  */
 export const envSchema = z.object({
@@ -80,6 +92,13 @@ export function validateWebhookPayload(data: unknown) {
 }
 
 /**
+ * Validate screenshot webhook payload
+ */
+export function validateScreenshotWebhookPayload(data: unknown) {
+    return screenshotWebhookPayloadSchema.parse(data);
+}
+
+/**
  * Validate environment variables
  */
 export function validateEnv(env: NodeJS.ProcessEnv) {
@@ -114,6 +133,7 @@ export function validateAccountMapping(data: unknown) {
  * Type exports for validated data
  */
 export type ValidatedWebhookPayload = z.infer<typeof webhookPayloadSchema>;
+export type ValidatedScreenshotWebhookPayload = z.infer<typeof screenshotWebhookPayloadSchema>;
 export type ValidatedEnv = z.infer<typeof envSchema>;
 export type ValidatedExtractedTransaction = z.infer<typeof extractedTransactionSchema>;
 export type ValidatedCoordinates = z.infer<typeof coordinatesSchema>;

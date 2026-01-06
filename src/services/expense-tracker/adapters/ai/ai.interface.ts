@@ -19,6 +19,23 @@ export interface AIAdapter {
     extractTransactionData(text: string): Promise<ExtractedTransaction>;
 
     /**
+     * Extract transaction data from screenshot image
+     * 
+     * @param imageBase64 - Base64-encoded screenshot image
+     * @param metadata - Optional metadata (app package name, location, timestamp)
+     * @returns Extracted transaction data
+     * @throws {AIExtractionError} If extraction fails
+     */
+    extractTransactionDataFromImage(
+        imageBase64: string,
+        metadata?: {
+            appPackageName?: string;
+            location?: { latitude: number; longitude: number };
+            timestamp?: string;
+        }
+    ): Promise<ExtractedTransaction>;
+
+    /**
      * Validate API key/credentials
      * 
      * @returns True if credentials are valid

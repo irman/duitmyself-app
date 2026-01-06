@@ -391,6 +391,377 @@ export class TransactionProcessor {
     }
 
     /**
+     * Process a screenshot webhook payload and create a transaction
+     * 
+     * @param payload - Screenshot webhook payload from MacroDroid
+     * @param wideEvent - Optional wide event to enrich with processing context
+     * @returns Transaction result
+     */
+    async processScreenshotTransaction(
+        payload: import('@/shared/types/common.types').ScreenshotWebhookPayload,
+        wideEvent?: WideEvent
+    ): Promise<TransactionResult> {
+        const startTime = performance.now();
+
+        // Start main processing span
+        const span = tracer.startSpan('transaction.process.screenshot');
+
+        return await context.with(trace.setSpan(context.active(), span), async () => {
+            try {
+                // Add payload metadata to span
+                addSpanAttributes(span, {
+                    'transaction.app_package_name': payload.app_package_name,
+                    'transaction.timestamp': payload.timestamp,
+                    'transaction.has_gps': !!(payload.latitude && payload.longitude),
+                    'transaction.has_metadata': !!payload.metadata,
+                });
+
+                // === STEP 1: Filter - Check if app package is allowed ===
+                const filterSpan = tracer.startSpan('transaction.filter', {
+                    attributes: {
+                        'filter.app_package_name': payload.app_package_name,
+                    },
+                });
+
+                const isAllowed = isAllowedApp(payload.app_package_name);
+
+                // Enrich wide event with app context
+                if (wideEvent) {
+                    wideEvent.app = {
+                        name: payload.app_package_name,
+                        allowed: isAllowed,
+                    };
+                }
+
+                addSpanAttributes(filterSpan, {
+                    'filter.result': isAllowed,
+                });
+                filterSpan.end();
+
+                if (!isAllowed) {
+                    const errorMsg = `App '${payload.app_package_name}' is not in the allowed list`;
+                    if (wideEvent) {
+                        wideEvent.outcome = 'rejected';
+                        wideEvent.error = {
+                            type: 'FilterError',
+                            message: errorMsg,
+                            retriable: false,
+                            step: 'filter',
+                        };
+                    }
+                    setSpanStatus(span, false, errorMsg);
+                    span.end();
+                    return {
+                        success: false,
+                        error: errorMsg,
+                    };
+                }
+
+                // === STEP 2: AI Extraction - Analyze screenshot ===
+                const aiSpan = tracer.startSpan('transaction.ai_extract_image', {
+                    attributes: {
+                        'ai.app_package_name': payload.app_package_name,
+                        'ai.has_location': !!(payload.latitude && payload.longitude),
+                    },
+                });
+
+                const aiStart = Date.now();
+                const extracted = await this.aiAdapter.extractTransactionDataFromImage(
+                    payload.image_base64,
+                    {
+                        appPackageName: payload.app_package_name,
+                        location: (payload.latitude && payload.longitude) ? {
+                            latitude: parseFloat(payload.latitude),
+                            longitude: parseFloat(payload.longitude),
+                        } : undefined,
+                        timestamp: payload.timestamp,
+                    }
+                );
+                const aiDuration = Date.now() - aiStart;
+
+                // Enrich wide event with AI extraction context
+                if (wideEvent) {
+                    wideEvent.ai = {
+                        is_transaction: extracted.is_transaction,
+                        extraction_time_ms: aiDuration,
+                        model: 'gemini-2.5-flash',
+                    };
+                    if (extracted.confidence !== undefined) {
+                        wideEvent.ai.confidence = extracted.confidence;
+                    }
+                }
+
+                addSpanAttributes(aiSpan, {
+                    'ai.is_transaction': extracted.is_transaction,
+                    'ai.confidence': extracted.confidence || 0,
+                    'ai.amount': extracted.amount,
+                    'ai.merchant': extracted.merchant,
+                    'ai.category': extracted.category || 'unknown',
+                });
+                aiSpan.end();
+
+                // Step 2.5: Confidence Filter - Only process actual transactions
+                if (!extracted.is_transaction) {
+                    const errorMsg = 'Not a financial transaction';
+                    if (wideEvent) {
+                        wideEvent.outcome = 'rejected';
+                        wideEvent.error = {
+                            type: 'NotTransactionError',
+                            message: errorMsg,
+                            retriable: false,
+                            step: 'ai_extraction',
+                        };
+                    }
+                    setSpanStatus(span, false, errorMsg);
+                    span.end();
+                    return {
+                        success: false,
+                        error: errorMsg,
+                    };
+                }
+
+                const MIN_CONFIDENCE = 0.4;
+                if (extracted.confidence && extracted.confidence < MIN_CONFIDENCE) {
+                    const errorMsg = `Low confidence: ${extracted.confidence}`;
+                    if (wideEvent) {
+                        wideEvent.outcome = 'rejected';
+                        wideEvent.error = {
+                            type: 'LowConfidenceError',
+                            message: errorMsg,
+                            retriable: false,
+                            step: 'ai_extraction',
+                        };
+                    }
+                    setSpanStatus(span, false, errorMsg);
+                    span.end();
+                    return {
+                        success: false,
+                        error: errorMsg,
+                    };
+                }
+
+                // Enrich wide event with transaction details
+                if (wideEvent) {
+                    wideEvent.transaction = {
+                        date: payload.timestamp,
+                    };
+                    if (extracted.amount !== undefined) wideEvent.transaction.amount = extracted.amount;
+                    if (extracted.merchant !== undefined) wideEvent.transaction.merchant = extracted.merchant;
+                    if (extracted.category !== undefined) wideEvent.transaction.category = extracted.category;
+                    if (extracted.currency !== undefined) wideEvent.transaction.currency = extracted.currency;
+                    if (extracted.type !== undefined) wideEvent.transaction.type = extracted.type;
+                }
+
+                // === STEP 3: Account Mapping - Resolve account ID ===
+                const accountSpan = tracer.startSpan('transaction.account_mapping', {
+                    attributes: {
+                        'account.app_package_name': payload.app_package_name,
+                    },
+                });
+
+                const accountId = getAccountId(payload.app_package_name);
+
+                if (!accountId) {
+                    const errorMsg = `No account mapping found for app '${payload.app_package_name}'`;
+                    if (wideEvent) {
+                        wideEvent.outcome = 'error';
+                        wideEvent.error = {
+                            type: 'AccountMappingError',
+                            message: errorMsg,
+                            retriable: false,
+                            step: 'account_mapping',
+                        };
+                    }
+                    logger.error({ event: 'account.mapping.missing', appPackageName: payload.app_package_name }, errorMsg);
+
+                    setSpanStatus(accountSpan, false, errorMsg);
+                    accountSpan.end();
+                    setSpanStatus(span, false, errorMsg);
+                    span.end();
+                    return {
+                        success: false,
+                        error: errorMsg,
+                    };
+                }
+
+                // Update wide event with account ID
+                if (wideEvent && wideEvent.app) {
+                    wideEvent.app.account_id = accountId;
+                }
+
+                addSpanAttributes(accountSpan, {
+                    'account.id': accountId,
+                });
+                accountSpan.end();
+
+                // === STEP 4: Location Enrichment (optional) ===
+                let locationNote = '';
+                if (payload.latitude && payload.longitude) {
+                    const locationSpan = tracer.startSpan('transaction.location_enrichment', {
+                        attributes: {
+                            'location.latitude': payload.latitude,
+                            'location.longitude': payload.longitude,
+                        },
+                    });
+
+                    const locationStart = Date.now();
+                    try {
+                        const coords = validateCoordinates(payload.latitude, payload.longitude);
+                        const location = await this.geocodingAdapter.reverseGeocode(
+                            coords.latitude,
+                            coords.longitude
+                        );
+                        locationNote = `\nLocation: ${location}`;
+
+                        // Enrich wide event with location
+                        if (wideEvent) {
+                            wideEvent.location = {
+                                latitude: Number(payload.latitude),
+                                longitude: Number(payload.longitude),
+                                address: location,
+                                lookup_success: true,
+                                lookup_time_ms: Date.now() - locationStart,
+                            };
+                        }
+
+                        addSpanAttributes(locationSpan, {
+                            'location.address': location,
+                        });
+                        setSpanStatus(locationSpan, true);
+                    } catch (error) {
+                        // Enrich wide event with failed location lookup
+                        if (wideEvent) {
+                            wideEvent.location = {
+                                latitude: Number(payload.latitude),
+                                longitude: Number(payload.longitude),
+                                lookup_success: false,
+                                lookup_time_ms: Date.now() - locationStart,
+                            };
+                        }
+
+                        logger.warn({
+                            event: 'location.enrichment.failed',
+                            error,
+                        }, 'Failed to enrich with location, continuing without it');
+
+                        setSpanStatus(locationSpan, false, 'Failed to enrich location');
+                    } finally {
+                        locationSpan.end();
+                    }
+                }
+
+                // === STEP 5: Build Transaction ===
+                // Use extracted transaction date if available, otherwise fall back to metadata timestamp
+                const transactionDate = extracted.transaction_date || payload.timestamp;
+
+                const transaction: Transaction = {
+                    date: transactionDate,
+                    amount: extracted.amount!, // Non-null: verified is_transaction is true
+                    payee: extracted.merchant!, // Non-null: verified is_transaction is true
+                    account_id: accountId,
+                    category: extracted.category,
+                    notes: [
+                        extracted.notes || `Screenshot from ${payload.app_package_name}`,
+                        extracted.reference ? `Ref: ${extracted.reference}` : null,
+                        locationNote ? `📍 ${locationNote}` : null,
+                        (payload.latitude && payload.longitude) ? `📌 ${payload.latitude}, ${payload.longitude}` : null,
+                    ].filter(Boolean).join(' | '),
+                    status: 'uncleared',
+                    currency: extracted.currency?.toLowerCase() || 'myr',
+                };
+
+                // === STEP 6: Budget Sync - Create transaction ===
+                const budgetSpan = tracer.startSpan('transaction.budget_sync', {
+                    attributes: {
+                        'budget.amount': transaction.amount,
+                        'budget.merchant': transaction.payee,
+                        'budget.account_id': transaction.account_id,
+                    },
+                });
+
+                const budgetStart = Date.now();
+                const result = await this.budgetAdapter.createTransaction(transaction);
+                const budgetDuration = Date.now() - budgetStart;
+
+                // Enrich wide event with external API call metadata
+                if (wideEvent) {
+                    wideEvent.external_apis = {
+                        gemini: {
+                            latency_ms: aiDuration,
+                            success: true,
+                            retry_count: 0,
+                        },
+                        lunch_money: {
+                            latency_ms: budgetDuration,
+                            success: result.success,
+                            retry_count: 0,
+                        },
+                    };
+
+                    // Update transaction ID in wide event
+                    if (wideEvent.transaction && result.transactionId) {
+                        wideEvent.transaction.id = result.transactionId;
+                    }
+                }
+
+                addSpanAttributes(budgetSpan, {
+                    'budget.transaction_id': result.transactionId || 'unknown',
+                    'budget.success': result.success,
+                });
+                setSpanStatus(budgetSpan, result.success);
+                budgetSpan.end();
+
+                // Calculate final processing time
+                const processingTime = (performance.now() - startTime) / 1000; // Convert to seconds
+
+                // Mark main span as successful
+                addSpanAttributes(span, {
+                    'transaction.id': result.transactionId || 'unknown',
+                    'transaction.processing_time_ms': processingTime * 1000,
+                });
+                setSpanStatus(span, true);
+                span.end();
+
+                return result;
+            } catch (error) {
+                // Enrich wide event with error
+                if (wideEvent) {
+                    wideEvent.outcome = 'error';
+                    if (error instanceof Error) {
+                        wideEvent.error = {
+                            type: error.name,
+                            message: error.message,
+                            retriable: false,
+                            step: 'unknown',
+                        };
+                        if (error.stack !== undefined) {
+                            wideEvent.error.stack = error.stack;
+                        }
+                    }
+                }
+
+                logger.error({
+                    event: 'transaction.processing.error',
+                    error,
+                    appPackageName: payload.app_package_name,
+                }, 'Screenshot transaction processing failed');
+
+                // Mark span as failed
+                setSpanStatus(span, false, error instanceof Error ? error.message : 'Unknown error');
+                if (error instanceof Error) {
+                    span.recordException(error);
+                }
+                span.end();
+
+                return {
+                    success: false,
+                    error: error instanceof Error ? error.message : 'Unknown error occurred',
+                };
+            }
+        });
+    }
+
+    /**
      * Validate all adapters are working
      * 
      * @returns Object with validation results for each adapter

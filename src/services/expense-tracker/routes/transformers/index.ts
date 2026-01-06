@@ -3,6 +3,7 @@
  */
 
 export { transformNotificationPayload } from './notification.transformer';
+export { transformScreenshotPayload } from './screenshot.transformer';
 export type {
     PayloadTransformer,
     NotificationPayloadInput,

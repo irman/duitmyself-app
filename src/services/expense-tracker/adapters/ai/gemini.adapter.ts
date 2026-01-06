@@ -95,6 +95,79 @@ export class GeminiAdapter implements AIAdapter {
     }
 
     /**
+     * Extract transaction data from screenshot image
+     */
+    async extractTransactionDataFromImage(
+        imageBase64: string,
+        metadata?: {
+            appPackageName?: string;
+            location?: { latitude: number; longitude: number };
+            timestamp?: string;
+        }
+    ): Promise<ExtractedTransaction> {
+        const requestId = crypto.randomUUID();
+
+        logger.info({
+            event: 'ai.extraction.image.request',
+            appPackageName: metadata?.appPackageName,
+            hasLocation: !!(metadata?.location),
+            requestId,
+        }, 'Extracting transaction from screenshot');
+
+        try {
+            const prompt = this.buildVisionPrompt(metadata);
+
+            // Prepare image part for Gemini
+            const imagePart = {
+                inlineData: {
+                    data: imageBase64,
+                    mimeType: 'image/png', // Assume PNG, but JPEG also works
+                },
+            };
+
+            const result = await this.model.generateContent([prompt, imagePart]);
+            const response = result.response;
+            const responseText = response.text();
+
+            // Parse JSON response
+            const extracted = this.parseResponse(responseText);
+
+            // Validate extracted data
+            const validated = validateExtractedTransaction(extracted);
+
+            // Log extraction response only if it's a transaction
+            if (validated.is_transaction && validated.amount && validated.merchant && validated.type) {
+                logAIExtractionResponse({
+                    amount: validated.amount,
+                    merchant: validated.merchant,
+                    type: validated.type,
+                    category: validated.category ?? undefined,
+                    requestId,
+                });
+            }
+
+            return validated;
+        } catch (error) {
+            logger.error({
+                event: 'ai.extraction.image.error',
+                appPackageName: metadata?.appPackageName,
+                error: error instanceof Error ? {
+                    message: error.message,
+                    stack: error.stack,
+                    name: error.name,
+                } : error,
+                requestId,
+            }, 'AI image extraction failed');
+
+            throw new AIExtractionError(
+                'Failed to extract transaction data from screenshot',
+                `Screenshot from ${metadata?.appPackageName || 'unknown app'}`,
+                error instanceof Error ? error : undefined
+            );
+        }
+    }
+
+    /**
      * Validate API key by making a test request
      */
     async validateApiKey(): Promise<boolean> {
@@ -233,6 +306,133 @@ CRITICAL REMINDERS:
 - Amount MUST be positive number
 
 Now analyze the notification above and return the JSON:
+`.trim();
+    }
+
+    /**
+     * Build the AI prompt for screenshot transaction extraction
+     */
+    private buildVisionPrompt(metadata?: {
+        appPackageName?: string;
+        location?: { latitude: number; longitude: number };
+        timestamp?: string;
+    }): string {
+        const contextInfo = metadata?.appPackageName
+            ? `\nCONTEXT: This screenshot is from the app: ${metadata.appPackageName}\n`
+            : '';
+
+        return `
+You are a transaction data extraction system for a budgeting app. Analyze banking app screenshots and extract structured transaction data.
+
+${contextInfo}
+IMPORTANT: Screenshots may vary significantly in layout, design, and format across different apps and versions. Be adaptive and look for transaction details anywhere in the image.
+
+STRICT JSON SCHEMA - You MUST follow this exact structure:
+{
+  "is_transaction": boolean,    // true only if this is an actual financial transaction
+  "amount": number,              // REQUIRED if is_transaction=true, always positive
+  "currency": string,            // REQUIRED if is_transaction=true (e.g., "MYR", "USD")
+  "type": "debit" | "credit",    // REQUIRED if is_transaction=true (ONLY these two values allowed)
+  "merchant": string,            // REQUIRED if is_transaction=true
+  "category": string,            // OPTIONAL, see allowed categories below
+  "reference": string,           // OPTIONAL, transaction reference number
+  "notes": string,               // OPTIONAL, any additional details from the screenshot
+  "confidence": number,          // REQUIRED, 0.0 to 1.0
+  "transaction_date": string     // OPTIONAL, ISO 8601 date extracted from screenshot (e.g., "2026-01-06T16:57:00Z")
+}
+
+CRITICAL RULES FOR "type" FIELD:
+- ONLY use "debit" or "credit" - NO OTHER VALUES ALLOWED
+- "debit" = Money going OUT (purchases, payments, transfers to others, withdrawals)
+- "credit" = Money coming IN (salary, refunds, transfers from others, deposits)
+- For person-to-person transfers: use type="debit" with category="transfer"
+
+ALLOWED CATEGORIES (choose the most appropriate):
+- "food" - Restaurants, cafes, food delivery
+- "transport" - Fuel, parking, ride-sharing, public transport
+- "shopping" - Retail purchases, online shopping
+- "bills" - Utilities, subscriptions, recurring payments
+- "transfer" - Person-to-person transfers, bank transfers
+- "entertainment" - Movies, games, hobbies
+- "utilities" - Electricity, water, internet, phone bills
+- "healthcare" - Medical, pharmacy, insurance
+- "other" - Anything that doesn't fit above categories
+
+AMOUNT RULES:
+- ALWAYS use positive numbers for amount
+- The "type" field determines direction (debit=out, credit=in)
+- Extract exact amount from screenshot
+- Look for the primary transaction amount (not balances or other amounts)
+
+MERCHANT/PAYEE EXTRACTION (CRITICAL):
+- Look for merchant/payee name ANYWHERE in the screenshot
+- Common labels: "Merchant", "Paid to", "Received from", "To", "From", "Payee", "Recipient", "Store", "Shop"
+- May appear as: business name, person name, store name, or service name
+- Different apps use different layouts - be flexible
+- Examples: "Starbucks", "FP-AEON", "Ahmad bin Ali", "Grab", "Netflix"
+- If multiple names appear, choose the one that represents the transaction recipient/sender
+- Ignore app names, bank names, or account names - focus on the actual merchant/payee
+
+TRANSACTION DATE EXTRACTION (IMPORTANT):
+- Look for the transaction date/time displayed ANYWHERE in the screenshot
+- Common formats: "06 Jan 2026, 04:57PM", "2026-01-06 16:57", "Jan 6, 2026", "6/1/2026"
+- Different apps show dates differently - be adaptive
+- Convert to ISO 8601 format: "2026-01-06T16:57:00Z"
+- If you can see a date/time in the screenshot, ALWAYS include it in "transaction_date"
+- If no date is visible in the screenshot, omit the "transaction_date" field entirely
+- The system will use metadata timestamp as fallback if you don't provide transaction_date
+
+CONFIDENCE SCORING:
+- 0.9-1.0: Clear transaction with all details visible
+- 0.7-0.8: Likely transaction, some details unclear or partially visible
+- 0.4-0.6: Uncertain, missing key information
+- 0.0-0.3: Probably not a transaction
+
+NON-TRANSACTION EXAMPLES (return is_transaction=false):
+- Account balance screens without transaction details
+- Login screens
+- Settings screens
+- Promotional banners
+- Loading screens
+- Menu screens
+
+SCREENSHOT ANALYSIS INSTRUCTIONS:
+1. **Scan the entire screenshot** - don't assume a specific layout
+2. Look for transaction amount (usually prominent, may be largest number)
+3. **Identify merchant/payee name** - look for business/person names, not app/bank names
+4. Determine transaction type from context words like "Paid", "Received", "Debit", "Credit"
+5. Extract reference/transaction ID if visible (often labeled as "Ref", "Transaction ID", "Order ID")
+6. **EXTRACT TRANSACTION DATE/TIME if visible** - look anywhere in the screenshot
+7. Identify category hints from merchant name or transaction context
+8. Read any additional details for the notes field
+
+HANDLING DIFFERENT APP LAYOUTS:
+- Some apps show merchant at top, some at bottom
+- Some use icons, some use text labels
+- Some show dates prominently, others hide them
+- Be flexible and adaptive - look for semantic meaning, not specific positions
+- Focus on WHAT the information represents, not WHERE it appears
+
+HANDLING ADS AND PROMOTIONAL CONTENT:
+- Screenshots may contain advertisements, banners, or promotional offers
+- Common examples: "Scan & Pay! Huat up to RM88 + 920 Coins", promotional images, special offers
+- **IGNORE promotional content** - focus only on the actual transaction details
+- Look for the core transaction information: amount, merchant, date, reference
+- Ads are usually colorful banners, images with marketing text, or special offers
+- Transaction details are typically in plain text with labels like "Amount", "Paid to", "Date", etc.
+- If unsure whether something is an ad or transaction detail, prioritize information with clear labels
+
+CRITICAL REMINDERS:
+- Return ONLY the JSON object
+- NO markdown code blocks (no \`\`\`json)
+- NO additional text or explanations
+- "type" field MUST be exactly "debit" or "credit" - nothing else
+- Amount MUST be positive number
+- If the screenshot doesn't show a clear transaction, return is_transaction=false
+- If you can see a date/time in the screenshot, include it in "transaction_date" field
+- Extract merchant/payee name even if layout is unfamiliar - look for the business/person name
+
+Now analyze the screenshot and return the JSON:
 `.trim();
     }
 
