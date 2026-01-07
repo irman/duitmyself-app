@@ -12,10 +12,27 @@ export const webhookPayloadSchema = z.object({
     longitude: z.string().optional(),
 });
 
-// User input schema for screenshot transactions
+/**
+ * Flexible boolean coercion for MacroDroid compatibility
+ * Accepts: true, false, "true", "false", "True", "False", "yes", "no", "1", "0"
+ */
+const flexibleBoolean = z.union([
+    z.boolean(),
+    z.string().transform((val) => {
+        const normalized = val.toLowerCase().trim();
+        if (normalized === 'true' || normalized === 'yes' || normalized === '1') return true;
+        if (normalized === 'false' || normalized === 'no' || normalized === '0') return false;
+        return false; // Default to false for any other string
+    }),
+    z.number().transform((val) => val === 1),
+]).pipe(z.boolean());
+
+/**
+ * User input schema for screenshot webhooks
+ */
 const userInputSchema = z.object({
     payee: z.string().optional(),
-    split: z.boolean().optional().default(false),
+    split: flexibleBoolean.optional().default(false),
     remarks: z.string().optional(),
 }).optional();
 
