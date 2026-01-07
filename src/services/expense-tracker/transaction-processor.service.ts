@@ -816,12 +816,20 @@ export class TransactionProcessor {
                     event: 'transaction.processing.error',
                     error,
                     appPackageName: payload.app_package_name,
+                    trace_id: span.spanContext().traceId,
+                    span_id: span.spanContext().spanId,
                 }, 'Screenshot transaction processing failed');
 
-                // Mark span as failed
+                // Mark span as failed and record exception
                 setSpanStatus(span, false, error instanceof Error ? error.message : 'Unknown error');
                 if (error instanceof Error) {
                     span.recordException(error);
+                    // Add error details as span attributes for better visibility
+                    addSpanAttributes(span, {
+                        'error.type': error.name,
+                        'error.message': error.message,
+                        'error.stack': error.stack || 'No stack trace',
+                    });
                 }
                 span.end();
 
