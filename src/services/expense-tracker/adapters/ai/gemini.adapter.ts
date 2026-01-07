@@ -17,7 +17,7 @@ export class GeminiAdapter implements AIAdapter {
     constructor(apiKey: string) {
         this.genAI = new GoogleGenerativeAI(apiKey);
         this.model = this.genAI.getGenerativeModel({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-2.5-flash-lite',
             safetySettings: [
                 {
                     category: HarmCategory.HARM_CATEGORY_HARASSMENT,
@@ -101,8 +101,10 @@ export class GeminiAdapter implements AIAdapter {
         imageBase64: string,
         metadata?: {
             appPackageName?: string;
-            location?: { latitude: number; longitude: number };
+            location?: { latitude: number; longitude: number } | undefined;
             timestamp?: string;
+            userPayee?: string | undefined;
+            userRemarks?: string | undefined;
         }
     ): Promise<ExtractedTransaction> {
         const requestId = crypto.randomUUID();
@@ -314,17 +316,31 @@ Now analyze the notification above and return the JSON:
      */
     private buildVisionPrompt(metadata?: {
         appPackageName?: string;
-        location?: { latitude: number; longitude: number };
+        location?: { latitude: number; longitude: number } | undefined;
         timestamp?: string;
+        userPayee?: string | undefined;
+        userRemarks?: string | undefined;
     }): string {
         const contextInfo = metadata?.appPackageName
             ? `\nCONTEXT: This screenshot is from the app: ${metadata.appPackageName}\n`
             : '';
 
+        // Build user context section
+        const userContext = [];
+        if (metadata?.userPayee) {
+            userContext.push(`USER PAYEE NOTE: "${metadata.userPayee}" (normalize this - fix spelling, capitalization, formatting)`);
+        }
+        if (metadata?.userRemarks) {
+            userContext.push(`USER REMARKS: ${metadata.userRemarks}`);
+        }
+        const contextSection = userContext.length > 0
+            ? `\n${userContext.join('\n')}\n`
+            : '';
+
         return `
 You are a transaction data extraction system for a budgeting app. Analyze banking app screenshots and extract structured transaction data.
 
-${contextInfo}
+${contextInfo}${contextSection}
 IMPORTANT: Screenshots may vary significantly in layout, design, and format across different apps and versions. Be adaptive and look for transaction details anywhere in the image.
 
 STRICT JSON SCHEMA - You MUST follow this exact structure:
@@ -366,9 +382,13 @@ AMOUNT RULES:
 
 MERCHANT/PAYEE EXTRACTION (CRITICAL):
 - Look for merchant/payee name ANYWHERE in the screenshot
-- Common labels: "Merchant", "Paid to", "Received from", "To", "From", "Payee", "Recipient", "Store", "Shop"
-- May appear as: business name, person name, store name, or service name
-- Different apps use different layouts - be flexible
+- If USER PAYEE NOTE is provided, use it as a hint to identify the correct merchant
+- Normalize the payee: fix spelling, proper capitalization, consistent formatting
+- Examples: "starbuk" → "Starbucks", "grab food" → "Grab Food", "ahmad" → "Ahmad"
+- Common labels: "Merchant", "Paid to", "Received from", "To", "From", "Payee", "Beneficiary", "Recipient"
+- Ignore app names, bank names, or account names - focus on the actual transaction counterparty
+- Be adaptive to different app layouts and formats
+- If unclear, use the most prominent business/person name visible
 - Examples: "Starbucks", "FP-AEON", "Ahmad bin Ali", "Grab", "Netflix"
 - If multiple names appear, choose the one that represents the transaction recipient/sender
 - Ignore app names, bank names, or account names - focus on the actual merchant/payee

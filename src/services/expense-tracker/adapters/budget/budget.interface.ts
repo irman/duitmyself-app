@@ -23,6 +23,15 @@ export interface BudgetAdapter {
      * @returns True if credentials are valid
      */
     validateCredentials(): Promise<boolean>;
+
+    /**
+     * Split a transaction 50/50 via Lunch Money API
+     * 
+     * @param transactionId - Transaction ID to split
+     * @param amount - Total transaction amount to split
+     * @throws {BudgetAPIError} If API call fails
+     */
+    splitTransaction(transactionId: number, amount: number): Promise<void>;
 }
 
 /**

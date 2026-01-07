@@ -7,6 +7,8 @@
  */
 export type PayloadTransformer<TInput = any, TOutput = any> = (input: TInput) => TOutput;
 
+import type { UserInput } from '@/shared/types/common.types';
+
 /**
  * Notification payload input (MacroDroid format)
  */
@@ -88,4 +90,5 @@ export interface ScreenshotPayloadOutput {
     latitude?: string;
     longitude?: string;
     metadata?: Record<string, any>;
+    user_input?: UserInput;
 }

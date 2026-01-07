@@ -45,7 +45,22 @@ export interface ScreenshotWebhookPayload {
     /** GPS longitude (optional) */
     longitude?: string | undefined;
     /** Additional metadata */
-    metadata?: Record<string, any>;
+    metadata?: Record<string, any> | undefined;
+    /** User-provided input for transaction customization */
+    user_input?: UserInput | undefined;
+}
+
+/**
+ * User-provided input for screenshot transactions
+ * All fields are optional with sensible defaults
+ */
+export interface UserInput {
+    /** User's quick note for payee (will be normalized by AI) */
+    payee?: string | undefined;
+    /** Split transaction 50/50 via Lunch Money API (default: false) */
+    split?: boolean | undefined;
+    /** Additional remarks for AI context or transaction notes */
+    remarks?: string | undefined;
 }
 
 /**
@@ -94,6 +109,8 @@ export interface Transaction {
     status?: 'cleared' | 'uncleared' | 'pending';
     /** Currency code (default: MYR) */
     currency?: string | undefined;
+    /** Tags for categorization (e.g., app package name) */
+    tags?: string[] | undefined;
 }
 
 /**

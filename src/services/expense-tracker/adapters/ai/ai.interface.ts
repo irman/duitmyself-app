@@ -30,8 +30,10 @@ export interface AIAdapter {
         imageBase64: string,
         metadata?: {
             appPackageName?: string;
-            location?: { latitude: number; longitude: number };
+            location?: { latitude: number; longitude: number } | undefined;
             timestamp?: string;
+            userPayee?: string | undefined;
+            userRemarks?: string | undefined;
         }
     ): Promise<ExtractedTransaction>;
 

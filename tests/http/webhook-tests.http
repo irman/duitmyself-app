@@ -8,7 +8,13 @@ Content-Type: application/json
   "timestamp": "1767706329",
   "latitude": "3.1390",
   "longitude": "101.6869",
-  "metadata": {}
+  "metadata": {
+    "user_input": {
+      "payee": "aeon midvalley",
+      "remarks": "Payment for FP-AEON",
+      "split": true
+    }
+  }
 }
 
 ###

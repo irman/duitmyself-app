@@ -162,4 +162,87 @@ export class LunchMoneyAdapter implements BudgetAdapter {
             return false;
         }
     }
+
+    /**
+     * Split a transaction 50/50 via Lunch Money API
+     */
+    async splitTransaction(transactionId: number, amount: number): Promise<void> {
+        try {
+            logger.debug({
+                event: 'budget.split.request',
+                transactionId,
+                amount,
+            }, 'Splitting transaction in Lunch Money');
+
+            // Calculate 50/50 split amounts with proper rounding
+            // Round the second split to 2 decimals, then calculate first split to absorb any remainder
+            const secondSplit = Math.round((amount / 2) * 100) / 100;
+            const firstSplit = Math.round((amount - secondSplit) * 100) / 100;
+
+            const response = await this.client
+                .put(`transactions/${transactionId}`, {
+                    json: {
+                        split: [
+                            { amount: firstSplit },
+                            { amount: secondSplit }
+                        ]
+                    },
+                })
+                .json<{ updated?: boolean; split?: number[]; error?: string | string[] }>();
+
+            // Log the full response for debugging
+            logger.info({
+                event: 'budget.split.response',
+                transactionId,
+                response,
+            }, 'Lunch Money split response');
+
+            if (response.error) {
+                logger.error({
+                    event: 'budget.split.api_error',
+                    transactionId,
+                    error: response.error,
+                    fullResponse: response,
+                }, 'Lunch Money API returned error');
+                throw new BudgetAPIError('Lunch Money API returned error', undefined, response);
+            }
+
+            logBudgetAPICall({
+                action: 'split',
+                success: true,
+                transactionId: transactionId.toString(),
+            });
+
+            logger.info({
+                event: 'budget.split.success',
+                transactionId,
+                splitIds: response.split,
+            }, 'Transaction split successfully');
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+            // Log detailed error information
+            logger.error({
+                event: 'budget.split.exception',
+                transactionId,
+                error: errorMessage,
+                errorType: error instanceof Error ? error.name : typeof error,
+                errorDetails: error,
+            }, 'Exception while splitting transaction');
+
+            logBudgetAPICall({
+                action: 'split',
+                success: false,
+                error: errorMessage,
+                transactionId: transactionId.toString(),
+            });
+
+            throw new BudgetAPIError(
+                'Failed to split transaction in Lunch Money',
+                undefined,
+                undefined,
+                error instanceof Error ? error : undefined
+            );
+        }
+    }
 }

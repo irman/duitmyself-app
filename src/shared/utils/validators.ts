@@ -12,16 +12,22 @@ export const webhookPayloadSchema = z.object({
     longitude: z.string().optional(),
 });
 
-/**
- * Screenshot webhook payload validation schema
- */
+// User input schema for screenshot transactions
+const userInputSchema = z.object({
+    payee: z.string().optional(),
+    split: z.boolean().optional().default(false),
+    remarks: z.string().optional(),
+}).optional();
+
+// Screenshot webhook payload schema
 export const screenshotWebhookPayloadSchema = z.object({
-    image_base64: z.string().min(1, 'Base64 image is required'),
+    image_base64: z.string().min(1, 'Screenshot image is required'),
     app_package_name: z.string().min(1, 'App package name is required'),
-    timestamp: z.string().datetime('Invalid timestamp format'),
+    timestamp: z.string().min(1, 'Timestamp is required'),
     latitude: z.string().optional(),
     longitude: z.string().optional(),
     metadata: z.record(z.any()).optional(),
+    user_input: userInputSchema,
 });
 
 /**

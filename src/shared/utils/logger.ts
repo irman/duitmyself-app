@@ -206,7 +206,7 @@ export function logLocationLookup(data: {
  * Log budget platform API call
  */
 export function logBudgetAPICall(data: {
-    action: 'create' | 'validate';
+    action: 'create' | 'validate' | 'split';
     success: boolean;
     transactionId?: string | undefined;
     error?: string | undefined;

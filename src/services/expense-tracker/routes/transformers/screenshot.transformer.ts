@@ -59,6 +59,15 @@ export function transformScreenshotPayload(input: ScreenshotPayloadInput): Scree
     }
     if (input.metadata !== undefined) {
         result.metadata = input.metadata;
+
+        // Extract user_input from metadata if provided
+        if (input.metadata.user_input) {
+            result.user_input = {
+                payee: input.metadata.user_input.payee,
+                split: input.metadata.user_input.split ?? false,
+                remarks: input.metadata.user_input.remarks,
+            };
+        }
     }
 
     return result;

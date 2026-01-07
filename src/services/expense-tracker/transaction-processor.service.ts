@@ -35,6 +35,22 @@ export class TransactionProcessor {
     ) { }
 
     /**
+     * Calculate distance between two GPS coordinates using Haversine formula
+     * @returns Distance in kilometers
+     */
+    private calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+        const R = 6371; // Earth's radius in km
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a =
+            Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c;
+    }
+
+    /**
      * Process a webhook payload and create a transaction
      * 
      * @param payload - Webhook payload from MacroDroid
@@ -466,15 +482,18 @@ export class TransactionProcessor {
                 });
 
                 const aiStart = Date.now();
+                const locationData = (payload.latitude && payload.longitude) ? {
+                    latitude: parseFloat(payload.latitude),
+                    longitude: parseFloat(payload.longitude),
+                } : undefined;
                 const extracted = await this.aiAdapter.extractTransactionDataFromImage(
                     payload.image_base64,
                     {
                         appPackageName: payload.app_package_name,
-                        location: (payload.latitude && payload.longitude) ? {
-                            latitude: parseFloat(payload.latitude),
-                            longitude: parseFloat(payload.longitude),
-                        } : undefined,
+                        location: locationData,
                         timestamp: payload.timestamp,
+                        userPayee: payload.user_input?.payee,
+                        userRemarks: payload.user_input?.remarks,
                     }
                 );
                 const aiDuration = Date.now() - aiStart;
@@ -484,7 +503,7 @@ export class TransactionProcessor {
                     wideEvent.ai = {
                         is_transaction: extracted.is_transaction,
                         extraction_time_ms: aiDuration,
-                        model: 'gemini-2.5-flash',
+                        model: 'gemini-2.5-flash-lite',
                     };
                     if (extracted.confidence !== undefined) {
                         wideEvent.ai.confidence = extracted.confidence;
@@ -654,20 +673,45 @@ export class TransactionProcessor {
                 // Use extracted transaction date if available, otherwise fall back to metadata timestamp
                 const transactionDate = extracted.transaction_date || payload.timestamp;
 
+                // Home location detection
+                const HOME_LAT = 3.182298;
+                const HOME_LON = 101.6750803;
+                const HOME_RADIUS_KM = 0.1; // 100 meters
+
+                let finalLocationNote: string | null = null;
+                if (payload.latitude && payload.longitude) {
+                    const lat = parseFloat(payload.latitude);
+                    const lon = parseFloat(payload.longitude);
+
+                    // Calculate distance using Haversine formula
+                    const distance = this.calculateDistance(lat, lon, HOME_LAT, HOME_LON);
+
+                    if (distance <= HOME_RADIUS_KM) {
+                        finalLocationNote = '📌 Home';
+                    } else if (locationNote) {
+                        // Use geocoded location name with coordinates
+                        finalLocationNote = `📍 ${locationNote} (${lat}, ${lon})`;
+                    } else {
+                        // Fallback to coordinates only
+                        finalLocationNote = `📌 ${lat}, ${lon}`;
+                    }
+                }
+
                 const transaction: Transaction = {
                     date: transactionDate,
                     amount: extracted.amount!, // Non-null: verified is_transaction is true
-                    payee: extracted.merchant!, // Non-null: verified is_transaction is true
+                    payee: extracted.merchant!, // AI-normalized payee
                     account_id: accountId,
                     category: extracted.category,
                     notes: [
-                        extracted.notes || `Screenshot from ${payload.app_package_name}`,
+                        extracted.notes,
                         extracted.reference ? `Ref: ${extracted.reference}` : null,
-                        locationNote ? `📍 ${locationNote}` : null,
-                        (payload.latitude && payload.longitude) ? `📌 ${payload.latitude}, ${payload.longitude}` : null,
+                        payload.user_input?.remarks ? `💬 ${payload.user_input.remarks}` : null,
+                        finalLocationNote,
                     ].filter(Boolean).join(' | '),
                     status: 'uncleared',
                     currency: extracted.currency?.toLowerCase() || 'myr',
+                    tags: [payload.app_package_name],
                 };
 
                 // === STEP 6: Budget Sync - Create transaction ===
@@ -682,6 +726,34 @@ export class TransactionProcessor {
                 const budgetStart = Date.now();
                 const result = await this.budgetAdapter.createTransaction(transaction);
                 const budgetDuration = Date.now() - budgetStart;
+
+                // === STEP 7: Split Transaction (if requested) ===
+                if (payload.user_input?.split === true && result.success && result.transactionId) {
+                    try {
+                        logger.info({
+                            event: 'transaction.split.request',
+                            transactionId: result.transactionId,
+                            amount: transaction.amount,
+                        }, 'Splitting transaction 50/50');
+
+                        await this.budgetAdapter.splitTransaction(
+                            parseInt(result.transactionId),
+                            transaction.amount
+                        );
+
+                        logger.info({
+                            event: 'transaction.split.success',
+                            transactionId: result.transactionId,
+                        }, 'Transaction split successfully');
+                    } catch (error) {
+                        // Log error but don't fail the entire transaction
+                        logger.error({
+                            event: 'transaction.split.failed',
+                            transactionId: result.transactionId,
+                            error: error instanceof Error ? error.message : 'Unknown error',
+                        }, 'Failed to split transaction');
+                    }
+                }
 
                 // Enrich wide event with external API call metadata
                 if (wideEvent) {
