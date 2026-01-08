@@ -81,17 +81,18 @@ export const envSchema = z.object({
 
 /**
  * Extracted transaction validation schema
+ * Transforms null values from Gemini API to undefined
  */
 export const extractedTransactionSchema = z.object({
     is_transaction: z.boolean(),
-    amount: z.number().optional(),
-    merchant: z.string().min(1).optional(),
-    type: z.enum(['debit', 'credit']).optional(),
-    currency: z.string().optional(),
-    category: z.string().optional(),
-    reference: z.string().optional(),
-    confidence: z.number().min(0).max(1).optional(),
-    notes: z.string().optional(),
+    amount: z.number().nullable().transform(val => val ?? undefined).optional(),
+    merchant: z.string().min(1).nullable().transform(val => val ?? undefined).optional(),
+    type: z.enum(['debit', 'credit']).nullable().transform(val => val ?? undefined).optional(),
+    currency: z.string().nullable().transform(val => val ?? undefined).optional(),
+    category: z.string().nullable().transform(val => val ?? undefined).optional(),
+    reference: z.string().nullable().transform(val => val ?? undefined).optional(),
+    confidence: z.number().min(0).max(1).nullable().transform(val => val ?? undefined).optional(),
+    notes: z.string().nullable().transform(val => val ?? undefined).optional(),
 });
 
 /**

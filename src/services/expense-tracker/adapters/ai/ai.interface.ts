@@ -29,11 +29,12 @@ export interface AIAdapter {
     extractTransactionDataFromImage(
         imageBase64: string,
         metadata?: {
-            appPackageName?: string;
+            appPackageName?: string | undefined;
             location?: { latitude: number; longitude: number } | undefined;
-            timestamp?: string;
+            timestamp?: string | undefined;
             userPayee?: string | undefined;
             userRemarks?: string | undefined;
+            availableAccounts?: Array<{ packageName: string; accountId: string }> | undefined;
         }
     ): Promise<ExtractedTransaction>;
 

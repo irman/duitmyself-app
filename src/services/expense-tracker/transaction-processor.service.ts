@@ -9,7 +9,7 @@ import type {
 import type { WideEvent } from '@/shared/types/wide-event.types';
 import { validateCoordinates } from '@/shared/utils/validators';
 import { logger } from '@/shared/utils/logger';
-import { getAccountId, isAllowedApp } from '@/shared/config/config';
+import { getAccountId, isAllowedApp, config } from '@/shared/config/config';
 import { tracer } from '@/shared/utils/tracing';
 import { addSpanAttributes, setSpanStatus } from '@/shared/utils/tracing-utils';
 import { trace, context } from '@opentelemetry/api';
@@ -486,6 +486,13 @@ export class TransactionProcessor {
                     latitude: parseFloat(payload.latitude),
                     longitude: parseFloat(payload.longitude),
                 } : undefined;
+
+                // Prepare available accounts for AI to help identify unknown apps
+                const availableAccounts = Object.entries(config.accountMapping).map(([packageName, accountId]) => ({
+                    packageName,
+                    accountId: String(accountId),
+                }));
+
                 const extracted = await this.aiAdapter.extractTransactionDataFromImage(
                     payload.image_base64,
                     {
@@ -494,6 +501,7 @@ export class TransactionProcessor {
                         timestamp: payload.timestamp,
                         userPayee: payload.user_input?.payee,
                         userRemarks: payload.user_input?.remarks,
+                        availableAccounts,
                     }
                 );
                 const aiDuration = Date.now() - aiStart;

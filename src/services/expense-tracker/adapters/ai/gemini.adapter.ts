@@ -100,11 +100,12 @@ export class GeminiAdapter implements AIAdapter {
     async extractTransactionDataFromImage(
         imageBase64: string,
         metadata?: {
-            appPackageName?: string;
+            appPackageName?: string | undefined;
             location?: { latitude: number; longitude: number } | undefined;
-            timestamp?: string;
+            timestamp?: string | undefined;
             userPayee?: string | undefined;
             userRemarks?: string | undefined;
+            availableAccounts?: Array<{ packageName: string; accountId: string }> | undefined;
         }
     ): Promise<ExtractedTransaction> {
         const requestId = crypto.randomUUID();
@@ -315,15 +316,22 @@ Now analyze the notification above and return the JSON:
      * Build the AI prompt for screenshot transaction extraction
      */
     private buildVisionPrompt(metadata?: {
-        appPackageName?: string;
+        appPackageName?: string | undefined;
         location?: { latitude: number; longitude: number } | undefined;
-        timestamp?: string;
+        timestamp?: string | undefined;
         userPayee?: string | undefined;
         userRemarks?: string | undefined;
+        availableAccounts?: Array<{ packageName: string; accountId: string }> | undefined;
     }): string {
-        const contextInfo = metadata?.appPackageName
-            ? `\nCONTEXT: This screenshot is from the app: ${metadata.appPackageName}\n`
-            : '';
+        // Build context info with app identification guidance
+        let contextInfo = '';
+        if (metadata?.appPackageName && metadata.appPackageName !== 'unknown') {
+            contextInfo = `\nCONTEXT: This screenshot is from the app: ${metadata.appPackageName}\n`;
+        } else if (metadata?.availableAccounts && metadata.availableAccounts.length > 0) {
+            // App is unknown - ask AI to help identify it
+            const appList = metadata.availableAccounts.map(acc => acc.packageName).join(', ');
+            contextInfo = `\nCONTEXT: The app that generated this screenshot is UNKNOWN. Based on the visual elements, branding, and transaction details in the screenshot, try to identify which financial institution this belongs to. Known apps: ${appList}\n`;
+        }
 
         // Build user context section
         const userContext = [];
