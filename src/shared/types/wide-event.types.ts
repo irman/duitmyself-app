@@ -132,7 +132,7 @@ export interface WideEvent {
 
     // ===== Webhook Context =====
     webhook?: {
-        payload_type: 'notification' | 'email' | 'screenshot';
+        payload_type: 'notification' | 'email' | 'screenshot' | 'telegram_update' | 'telegram_screenshot';
         has_gps: boolean;
         notification_text?: string;
         app_package_name?: string; // For screenshot webhooks
