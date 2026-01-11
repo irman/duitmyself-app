@@ -336,13 +336,13 @@ Now analyze the notification above and return the JSON:
         // Build user context section
         const userContext = [];
         if (metadata?.userPayee) {
-            userContext.push(`USER PAYEE NOTE: "${metadata.userPayee}" (normalize this - fix spelling, capitalization, formatting)`);
+            userContext.push(`🔴 USER PROVIDED PAYEE (USE THIS AS MERCHANT): "${metadata.userPayee}" - This is authoritative, just normalize the formatting/spelling`);
         }
         if (metadata?.userRemarks) {
-            userContext.push(`USER REMARKS: ${metadata.userRemarks}`);
+            userContext.push(`📝 USER REMARKS (add to notes): ${metadata.userRemarks}`);
         }
         const contextSection = userContext.length > 0
-            ? `\n${userContext.join('\n')}\n`
+            ? `\n**USER INPUT (PRIORITY OVERRIDE)**:\n${userContext.join('\n')}\n`
             : '';
 
         return `
@@ -389,16 +389,17 @@ AMOUNT RULES:
 - Look for the primary transaction amount (not balances or other amounts)
 
 MERCHANT/PAYEE EXTRACTION (CRITICAL):
-- Look for merchant/payee name ANYWHERE in the screenshot
-- If USER PAYEE NOTE is provided, use it as a hint to identify the correct merchant
-- Normalize the payee: fix spelling, proper capitalization, consistent formatting
+- **IF USER PAYEE NOTE IS PROVIDED**: Use it as the merchant/payee value (just normalize formatting)
+- User input is AUTHORITATIVE - it overrides what you see in the screenshot
+- Only extract from screenshot if NO user payee note is provided
+- When using user payee note: normalize it (fix spelling, proper capitalization, consistent formatting)
 - Examples: "starbuk" → "Starbucks", "grab food" → "Grab Food", "ahmad" → "Ahmad"
+- If NO user payee note: Look for merchant/payee name ANYWHERE in the screenshot
 - Common labels: "Merchant", "Paid to", "Received from", "To", "From", "Payee", "Beneficiary", "Recipient"
 - Ignore app names, bank names, or account names - focus on the actual transaction counterparty
 - Be adaptive to different app layouts and formats
 - If unclear, use the most prominent business/person name visible
 - Examples: "Starbucks", "FP-AEON", "Ahmad bin Ali", "Grab", "Netflix"
-- If multiple names appear, choose the one that represents the transaction recipient/sender
 - Ignore app names, bank names, or account names - focus on the actual merchant/payee
 
 TRANSACTION DATE EXTRACTION (IMPORTANT):
