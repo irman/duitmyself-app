@@ -343,7 +343,7 @@ export class TelegramConversationService {
 
             // Create transaction using budget adapter
             const result = await this.processor.budgetAdapter.createTransaction({
-                date: pending.timestamp,
+                date: pending.timestamp || new Date().toISOString(),
                 amount: pending.transactionData.amount!,
                 payee: pending.transactionData.merchant!,
                 account_id: pending.accountId,
