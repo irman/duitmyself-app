@@ -142,12 +142,8 @@ export function createTelegramRoutes(conversationService: TelegramConversationSe
                             { parse_mode: 'Markdown' }
                         );
                     } else {
-                        // Future: Handle text-based transaction entry
-                        await conversationService.telegram.sendMessage(
-                            chat.id,
-                            '⚠️ Text-based transaction entry is coming soon!\n\n' +
-                            'For now, please send screenshots via MacroDroid.'
-                        );
+                        // Handle text input for editing
+                        await conversationService.handleTextMessage(chat.id, text);
                     }
 
                     return c.json({ ok: true });
