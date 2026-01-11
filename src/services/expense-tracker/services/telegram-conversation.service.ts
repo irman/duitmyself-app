@@ -18,7 +18,7 @@ import { logger } from '@/shared/utils/logger';
  */
 export class TelegramConversationService {
     constructor(
-        private telegram: TelegramAdapter,
+        public telegram: TelegramAdapter,
         private processor: TransactionProcessor,
         private conversationState: ConversationStateService,
         private accountSelection: AccountSelectionService
