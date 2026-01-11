@@ -185,7 +185,11 @@ export class TelegramConversationService {
                 latitude: parseFloat(metadata.latitude),
                 longitude: parseFloat(metadata.longitude),
             } : undefined,
-            timestamp: metadata?.timestamp || new Date().toISOString(),
+            timestamp: metadata?.timestamp
+                ? (typeof metadata.timestamp === 'number'
+                    ? new Date(metadata.timestamp * 1000).toISOString()
+                    : metadata.timestamp)
+                : new Date().toISOString(),
             appPackageName: metadata?.appPackageName,
             createdAt: new Date(),
         });
@@ -236,7 +240,11 @@ export class TelegramConversationService {
                 latitude: parseFloat(metadata.latitude),
                 longitude: parseFloat(metadata.longitude),
             } : undefined,
-            timestamp: metadata?.timestamp || new Date().toISOString(),
+            timestamp: metadata?.timestamp
+                ? (typeof metadata.timestamp === 'number'
+                    ? new Date(metadata.timestamp * 1000).toISOString()
+                    : metadata.timestamp)
+                : new Date().toISOString(),
             appPackageName: metadata?.appPackageName,
             createdAt: new Date(),
         });
