@@ -276,6 +276,8 @@ export class TelegramConversationService {
             await this.handleBackToConfirm(chatId, callbackQueryId, pending);
         } else if (data.startsWith('edit_')) {
             await this.handleEditField(chatId, callbackQueryId, data, pending);
+        } else if (data.startsWith('amount_')) {
+            await this.handleAmountAdjustment(chatId, callbackQueryId, data, pending);
         }
     }
 
@@ -499,21 +501,196 @@ export class TelegramConversationService {
     ): Promise<void> {
         await this.telegram.answerCallbackQuery(callbackQueryId);
 
-        // For now, show a message that editing is not yet implemented
-        // In the future, this would prompt for text input
+        const field = data.replace('edit_', '');
+
+        // Update conversation state to track what's being edited
+        pending.state = `editing_${field}` as any;
+        this.conversationState.set(chatId, pending);
+
+        let promptText = '';
+        let keyboard: any;
+
+        switch (field) {
+            case 'amount':
+                promptText = `💰 *Edit Amount*\n\nCurrent: RM ${pending.transactionData.amount?.toFixed(2)}\n\nChoose a quick option or send the new amount as a message:`;
+                keyboard = {
+                    inline_keyboard: [
+                        [
+                            { text: '+10', callback_data: 'amount_add_10' },
+                            { text: '+50', callback_data: 'amount_add_50' },
+                            { text: '+100', callback_data: 'amount_add_100' },
+                        ],
+                        [
+                            { text: '-10', callback_data: 'amount_sub_10' },
+                            { text: '-50', callback_data: 'amount_sub_50' },
+                        ],
+                        [
+                            { text: '🔙 Back', callback_data: 'edit' },
+                        ],
+                    ],
+                };
+                break;
+
+            case 'merchant':
+                promptText = `🏪 *Edit Merchant*\n\nCurrent: ${pending.transactionData.merchant}\n\nSend the new merchant name as a message:`;
+                keyboard = {
+                    inline_keyboard: [
+                        [{ text: '🔙 Back', callback_data: 'edit' }],
+                    ],
+                };
+                break;
+
+            case 'category':
+                promptText = `📁 *Edit Category*\n\nCurrent: ${pending.transactionData.category || 'None'}\n\nSend the new category as a message:`;
+                keyboard = {
+                    inline_keyboard: [
+                        [{ text: '🔙 Back', callback_data: 'edit' }],
+                    ],
+                };
+                break;
+
+            case 'notes':
+                promptText = `📝 *Edit Notes*\n\nCurrent: ${pending.transactionData.notes || 'None'}\n\nSend the new notes as a message:`;
+                keyboard = {
+                    inline_keyboard: [
+                        [{ text: '🔙 Back', callback_data: 'edit' }],
+                    ],
+                };
+                break;
+
+            default:
+                promptText = '⚠️ Unknown field';
+                keyboard = {
+                    inline_keyboard: [
+                        [{ text: '🔙 Back', callback_data: 'edit' }],
+                    ],
+                };
+        }
+
         await this.telegram.editMessage(
             chatId,
             pending.messageId,
-            `⚠️ *Edit feature coming soon!*\n\nFor now, please cancel and send a new screenshot.\n\nOr confirm the transaction as-is and edit it manually in Lunch Money.`,
+            promptText,
             {
-                reply_markup: {
-                    inline_keyboard: [
-                        [{ text: '🔙 Back', callback_data: 'back_to_confirm' }],
-                        [{ text: '❌ Cancel', callback_data: 'cancel' }],
-                    ],
-                },
+                reply_markup: keyboard,
                 parse_mode: 'Markdown',
             }
+        );
+    }
+
+    /**
+     * Handle amount adjustment callbacks (+10, -50, etc.)
+     */
+    private async handleAmountAdjustment(
+        chatId: number,
+        callbackQueryId: string,
+        data: string,
+        pending: PendingTransaction
+    ): Promise<void> {
+        const action = data.replace('amount_', '');
+        const [operation, amountStr] = action.split('_');
+        const adjustment = parseFloat(amountStr);
+
+        if (!pending.transactionData.amount) {
+            await this.telegram.answerCallbackQuery(callbackQueryId, 'No amount to adjust');
+            return;
+        }
+
+        const currentAmount = pending.transactionData.amount;
+        const newAmount = operation === 'add' ? currentAmount + adjustment : currentAmount - adjustment;
+
+        // Update transaction data
+        pending.transactionData.amount = Math.max(0, newAmount); // Don't allow negative
+        this.conversationState.set(chatId, pending);
+
+        await this.telegram.answerCallbackQuery(
+            callbackQueryId,
+            `Amount ${operation === 'add' ? 'increased' : 'decreased'} by RM${adjustment}`
+        );
+
+        // Show updated edit amount screen
+        await this.handleEditField(chatId, callbackQueryId, 'edit_amount', pending);
+    }
+
+    /**
+     * Handle text message (for editing fields)
+     */
+    async handleTextMessage(chatId: number, text: string): Promise<void> {
+        const pending = this.conversationState.get(chatId);
+
+        if (!pending) {
+            // No active conversation
+            return;
+        }
+
+        // Check if we're in an editing state
+        const state = pending.state as string;
+        if (!state.startsWith('editing_')) {
+            // Not editing, ignore
+            return;
+        }
+
+        const field = state.replace('editing_', '');
+
+        logger.info({
+            event: 'telegram.edit.text_received',
+            chatId,
+            field,
+            text: text.substring(0, 50),
+        }, 'Received text input for editing');
+
+        // Update the field
+        switch (field) {
+            case 'amount':
+                const amount = parseFloat(text.replace(/[^0-9.]/g, ''));
+                if (isNaN(amount) || amount <= 0) {
+                    await this.telegram.sendMessage(
+                        chatId,
+                        '⚠️ Invalid amount. Please send a valid number.'
+                    );
+                    return;
+                }
+                pending.transactionData.amount = amount;
+                break;
+
+            case 'merchant':
+                pending.transactionData.merchant = text.trim();
+                break;
+
+            case 'category':
+                pending.transactionData.category = text.trim();
+                break;
+
+            case 'notes':
+                pending.transactionData.notes = text.trim();
+                break;
+        }
+
+        // Update state back to awaiting confirmation
+        pending.state = 'awaiting_confirmation';
+        this.conversationState.set(chatId, pending);
+
+        // Show confirmation with updated data
+        if (pending.accountId) {
+            await this.showConfirmation(
+                chatId,
+                pending.messageId,
+                pending.transactionData,
+                pending.accountId,
+                pending.screenshotBase64,
+                {
+                    latitude: pending.location?.latitude,
+                    longitude: pending.location?.longitude,
+                    timestamp: pending.timestamp,
+                    appPackageName: pending.appPackageName,
+                }
+            );
+        }
+
+        // Send confirmation message
+        await this.telegram.sendMessage(
+            chatId,
+            `✅ ${field.charAt(0).toUpperCase() + field.slice(1)} updated!`
         );
     }
 
