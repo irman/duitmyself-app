@@ -1,0 +1,895 @@
+{
+    "globalVariables": [
+        {
+            "dictionary": {
+                "entries": [],
+                "isArray": false,
+                "variableType": 4,
+                "type": "Dictionary"
+            },
+            "isActionBlockWorkingVar": true,
+            "isLocalVar": false,
+            "isSecure": false,
+            "m_booleanValue": false,
+            "m_decimalValue": 0.0,
+            "m_intValue": 0,
+            "m_name": "transAppName",
+            "m_stringValue": "",
+            "m_type": 2,
+            "supportsInput": false,
+            "supportsOutput": true
+        },
+        {
+            "description": "Transaction Capture Mode",
+            "dictionary": {
+                "entries": [],
+                "isArray": false,
+                "variableType": 4,
+                "type": "Dictionary"
+            },
+            "isActionBlockWorkingVar": true,
+            "isLocalVar": false,
+            "isSecure": false,
+            "m_booleanValue": false,
+            "m_decimalValue": 0.0,
+            "m_intValue": 0,
+            "m_name": "transCapMode",
+            "m_stringValue": "",
+            "m_type": 2,
+            "supportsInput": false,
+            "supportsOutput": true
+        }
+    ],
+    "macro": {
+        "disabledTimestamp": 0,
+        "exportedActionBlocks": [],
+        "forceEvenIfNotEnabledTimestamp": 0,
+        "isActionBlock": false,
+        "isExtra": false,
+        "isFavourite": false,
+        "lastEditedTimestamp": 1768150488980,
+        "localVariables": [
+            {
+                "dictionary": {
+                    "entries": [],
+                    "isArray": false,
+                    "variableType": 4,
+                    "type": "Dictionary"
+                },
+                "isActionBlockWorkingVar": false,
+                "isLocalVar": true,
+                "isSecure": false,
+                "m_booleanValue": false,
+                "m_decimalValue": 0.0,
+                "m_intValue": 0,
+                "m_name": "uploadResult",
+                "m_stringValue": "",
+                "m_type": 2,
+                "supportsInput": false,
+                "supportsOutput": true
+            },
+            {
+                "dictionary": {
+                    "entries": [],
+                    "isArray": false,
+                    "variableType": 4,
+                    "type": "Dictionary"
+                },
+                "isActionBlockWorkingVar": false,
+                "isLocalVar": true,
+                "isSecure": false,
+                "m_booleanValue": false,
+                "m_decimalValue": 0.0,
+                "m_intValue": 0,
+                "m_name": "deleteResult",
+                "m_stringValue": "rm: /storage/emulated/0/DCIM/Screenshots/Screenshot_20260111_191852_Telegram.jpg: No such file or directory",
+                "m_type": 2,
+                "supportsInput": false,
+                "supportsOutput": true
+            },
+            {
+                "dictionary": {
+                    "entries": [],
+                    "isArray": false,
+                    "variableType": 4,
+                    "type": "Dictionary"
+                },
+                "isActionBlockWorkingVar": true,
+                "isLocalVar": true,
+                "isSecure": false,
+                "m_booleanValue": false,
+                "m_decimalValue": 0.0,
+                "m_intValue": 0,
+                "m_name": "recent_file_path",
+                "m_stringValue": "/storage/emulated/0/DCIM/Screenshots/Screenshot_20260111_191852_Telegram.jpg",
+                "m_type": 2,
+                "supportsInput": false,
+                "supportsOutput": true
+            },
+            {
+                "dictionary": {
+                    "entries": [],
+                    "isArray": false,
+                    "variableType": 4,
+                    "type": "Dictionary"
+                },
+                "isActionBlockWorkingVar": false,
+                "isLocalVar": true,
+                "isSecure": false,
+                "m_booleanValue": true,
+                "m_decimalValue": 0.0,
+                "m_intValue": 0,
+                "m_name": "isFileUpdated",
+                "m_stringValue": "",
+                "m_type": 0,
+                "supportsInput": false,
+                "supportsOutput": true
+            },
+            {
+                "dictionary": {
+                    "entries": [],
+                    "isArray": false,
+                    "variableType": 4,
+                    "type": "Dictionary"
+                },
+                "isActionBlockWorkingVar": true,
+                "isLocalVar": true,
+                "isSecure": false,
+                "m_booleanValue": false,
+                "m_decimalValue": 0.0,
+                "m_intValue": 0,
+                "m_name": "userPayee",
+                "m_stringValue": "",
+                "m_type": 2,
+                "supportsInput": false,
+                "supportsOutput": true
+            },
+            {
+                "dictionary": {
+                    "entries": [],
+                    "isArray": false,
+                    "variableType": 4,
+                    "type": "Dictionary"
+                },
+                "isActionBlockWorkingVar": true,
+                "isLocalVar": true,
+                "isSecure": false,
+                "m_booleanValue": false,
+                "m_decimalValue": 0.0,
+                "m_intValue": 0,
+                "m_name": "userSplit",
+                "m_stringValue": "",
+                "m_type": 0,
+                "supportsInput": false,
+                "supportsOutput": true
+            },
+            {
+                "dictionary": {
+                    "entries": [],
+                    "isArray": false,
+                    "variableType": 4,
+                    "type": "Dictionary"
+                },
+                "isActionBlockWorkingVar": true,
+                "isLocalVar": true,
+                "isSecure": false,
+                "m_booleanValue": true,
+                "m_decimalValue": 0.0,
+                "m_intValue": 0,
+                "m_name": "stopAction",
+                "m_stringValue": "",
+                "m_type": 0,
+                "supportsInput": false,
+                "supportsOutput": true
+            },
+            {
+                "dictionary": {
+                    "entries": [],
+                    "isArray": false,
+                    "variableType": 4,
+                    "type": "Dictionary"
+                },
+                "isActionBlockWorkingVar": true,
+                "isLocalVar": true,
+                "isSecure": false,
+                "m_booleanValue": false,
+                "m_decimalValue": 0.0,
+                "m_intValue": 0,
+                "m_name": "userRemarks",
+                "m_stringValue": "",
+                "m_type": 2,
+                "supportsInput": false,
+                "supportsOutput": true
+            }
+        ],
+        "localVarsAlphabetical": true,
+        "m_GUID": -8492262635006928929,
+        "m_actionList": [
+            {
+                "childrenCollapsed": false,
+                "dontLogIfConditionIsFalse": false,
+                "disableLogging": false,
+                "m_SIGUID": -8138684050235786038,
+                "m_classType": "IfConditionAction",
+                "m_constraintList": [
+                    {
+                        "checkCase": false,
+                        "dictionaryKeys": {
+                            "keys": []
+                        },
+                        "dictionaryType": 2,
+                        "enableRegex": false,
+                        "m_booleanValue": false,
+                        "m_doubleValue": 0.0,
+                        "m_intCompareVariable": false,
+                        "m_intGreaterThan": false,
+                        "m_intLessThan": false,
+                        "m_intNotEqual": false,
+                        "m_intValue": 0,
+                        "m_stringComparisonType": 0,
+                        "m_stringEqual": true,
+                        "m_stringValue": "",
+                        "m_variable": {
+                            "dictionary": {
+                                "entries": [],
+                                "isArray": false,
+                                "variableType": 4,
+                                "type": "Dictionary"
+                            },
+                            "isActionBlockWorkingVar": false,
+                            "isLocalVar": false,
+                            "isSecure": false,
+                            "m_booleanValue": false,
+                            "m_decimalValue": 0.0,
+                            "m_intValue": 0,
+                            "m_name": "transCapMode",
+                            "m_stringValue": "",
+                            "m_type": 2,
+                            "supportsInput": true,
+                            "supportsOutput": true
+                        },
+                        "disableLogging": false,
+                        "m_SIGUID": -8909322447310101895,
+                        "m_classType": "MacroDroidVariableConstraint",
+                        "m_constraintList": [],
+                        "m_isDisabled": false,
+                        "m_isOrCondition": false
+                    },
+                    {
+                        "comparisonType": 4,
+                        "enableRegex": false,
+                        "ignoreCase": true,
+                        "option": 0,
+                        "type": 2,
+                        "value1": "{file_name}",
+                        "value2": "pending",
+                        "disableLogging": false,
+                        "m_SIGUID": -5780193374621292035,
+                        "m_classType": "CompareValueConstraint",
+                        "m_constraintList": [],
+                        "m_isDisabled": false,
+                        "m_isOrCondition": false
+                    },
+                    {
+                        "comparisonType": 4,
+                        "enableRegex": false,
+                        "ignoreCase": true,
+                        "option": 0,
+                        "type": 2,
+                        "value1": "{file_name}",
+                        "value2": "thumbnail",
+                        "disableLogging": false,
+                        "m_SIGUID": -7699290803636842472,
+                        "m_classType": "CompareValueConstraint",
+                        "m_constraintList": [],
+                        "m_isDisabled": false,
+                        "m_isOrCondition": false
+                    }
+                ],
+                "m_isDisabled": false,
+                "m_isOrCondition": true
+            },
+            {
+                "getByName": false,
+                "m_GUID": 111,
+                "m_macroName": "[This Macro]",
+                "disableLogging": false,
+                "m_SIGUID": -6559485476805605844,
+                "m_classType": "CancelActiveMacroAction",
+                "m_constraintList": [],
+                "m_isDisabled": true,
+                "m_isOrCondition": false
+            },
+            {
+                "dontLogIfConditionIsFalse": false,
+                "disableLogging": false,
+                "m_SIGUID": -8475206870090195043,
+                "m_classType": "ElseAction",
+                "m_constraintList": [],
+                "m_isDisabled": false,
+                "m_isOrCondition": false
+            },
+            {
+                "color": -1,
+                "label": "",
+                "disableLogging": false,
+                "m_SIGUID": -8168730470017116830,
+                "m_classType": "SeparatorAction",
+                "m_constraintList": [],
+                "m_isDisabled": false,
+                "m_isOrCondition": false
+            },
+            {
+                "autoExpand": true,
+                "blockNextAction": false,
+                "dimBackground": true,
+                "disableHtml": false,
+                "displayOverStatusBar": false,
+                "iconText": "",
+                "iconType": 0,
+                "liveNotification": false,
+                "m_backgroundColor": -16777216,
+                "m_iconBgColor": -769226,
+                "m_imageResourceId": 0,
+                "m_macroGUIDToRun": 0,
+                "m_notificationChannelType": 0,
+                "m_notificationSubject": "Created",
+                "m_notificationText": "{file_path} | {v\u003dtransAppName} | {lv\u003drecent_file_path}",
+                "m_overwriteExisting": false,
+                "m_priority": 0,
+                "m_ringtoneIndex": 0,
+                "m_ringtoneName": "Default",
+                "m_runMacroWhenPressed": false,
+                "m_textColor": -1,
+                "maintainSpaces": false,
+                "notificationActionButtons": [],
+                "notificationChannelName": "Notification action",
+                "notificationIdString": "0",
+                "notificatonId": 0,
+                "preventAndroid16Grouping": false,
+                "preventBackButtonClosing": false,
+                "preventRemovalByBin": false,
+                "showAsOverlayOption": 1,
+                "yPosition": 0.5,
+                "disableLogging": false,
+                "m_SIGUID": -6684864048873728352,
+                "m_classType": "NotificationAction",
+                "m_constraintList": [],
+                "m_isDisabled": false,
+                "m_isOrCondition": false
+            },
+            {
+                "booleanDictionaryKeys": {
+                    "keys": []
+                },
+                "dictionaryKeys": [],
+                "dictionaryOrArrayType": -1,
+                "existingManualKeyType": 0,
+                "m_booleanInvert": false,
+                "m_darkMode": -1,
+                "m_doubleRandomMax": 0.0,
+                "m_doubleRandomMin": 0.0,
+                "m_falseLabel": "False",
+                "m_intExpression": false,
+                "m_intRandom": false,
+                "m_intRandomMax": 0,
+                "m_intRandomMin": 0,
+                "m_intValueDecrement": false,
+                "m_intValueIncrement": false,
+                "m_newBooleanValue": false,
+                "m_newDoubleValue": 0.0,
+                "m_newIntValue": 0,
+                "m_newStringValue": "{file_path}",
+                "m_trueLabel": "True",
+                "m_userPrompt": false,
+                "m_userPromptEmptyAtStart": false,
+                "m_userPromptPassword": false,
+                "m_userPromptShowCancel": true,
+                "m_userPromptStopAfterCancel": true,
+                "m_variable": {
+                    "dictionary": {
+                        "entries": [],
+                        "isArray": false,
+                        "variableType": 4,
+                        "type": "Dictionary"
+                    },
+                    "isActionBlockWorkingVar": true,
+                    "isLocalVar": true,
+                    "isSecure": false,
+                    "m_booleanValue": false,
+                    "m_decimalValue": 0.0,
+                    "m_intValue": 0,
+                    "m_name": "recent_file_path",
+                    "m_stringValue": "",
+                    "m_type": 2,
+                    "supportsInput": false,
+                    "supportsOutput": true
+                },
+                "disableLogging": false,
+                "m_SIGUID": -4622664703430029577,
+                "m_classType": "SetVariableAction",
+                "m_constraintList": [],
+                "m_isDisabled": false,
+                "m_isOrCondition": false
+            },
+            {
+                "m_delayInMilliSeconds": 0,
+                "m_delayInSeconds": 5,
+                "m_useAlarm": true,
+                "unitForVariables": 0,
+                "disableLogging": false,
+                "m_SIGUID": -8067181523412012675,
+                "m_classType": "PauseAction",
+                "m_constraintList": [],
+                "m_isDisabled": false,
+                "m_isOrCondition": false
+            },
+            {
+                "color": -1,
+                "label": "",
+                "disableLogging": false,
+                "m_SIGUID": -4815404085004988615,
+                "m_classType": "SeparatorAction",
+                "m_constraintList": [],
+                "m_isDisabled": false,
+                "m_isOrCondition": false
+            },
+            {
+                "variableNames": [
+                    "stopAction",
+                    "userPayee",
+                    "userRemarks",
+                    "userSplit"
+                ],
+                "disableLogging": false,
+                "m_SIGUID": -5480895842411804750,
+                "m_classType": "ClearVariablesAction",
+                "m_constraintList": [],
+                "m_isDisabled": false,
+                "m_isOrCondition": false
+            },
+            {
+                "sceneDescription": {
+                    "itemList": {
+                        "items": [
+                            {
+                                "type": "SceneText",
+                                "sceneTextConfig": {
+                                    "autoSizeText": false,
+                                    "enableAutoRefresh": false,
+                                    "enableSelection": false,
+                                    "htmlFormatting": false,
+                                    "isBold": false,
+                                    "isItalic": false,
+                                    "maxLines": "3",
+                                    "maxLinesEnabled": false,
+                                    "text": "Log Transaction",
+                                    "textAlignment": "Start",
+                                    "textColor": -1,
+                                    "textSize": "20"
+                                },
+                                "guid": -7817738340387117989,
+                                "iconRes": 2131232641,
+                                "lastRefreshValue": 0
+                            },
+                            {
+                                "type": "SceneHorizontalDivider",
+                                "config": {
+                                    "dividerColor": -1,
+                                    "dividerHeight": 2,
+                                    "padding": 16
+                                },
+                                "guid": -8309732970993950075,
+                                "iconRes": 2131231487,
+                                "lastRefreshValue": 0
+                            },
+                            {
+                                "type": "SceneEditText",
+                                "enteredText": "",
+                                "lastEnteredText": "",
+                                "sceneEditTextConfig": {
+                                    "hintText": "Payee",
+                                    "horizontalLayoutWidth": 50,
+                                    "inputType": "TEXT",
+                                    "isBold": true,
+                                    "isItalic": false,
+                                    "isPassword": false,
+                                    "padding": 16,
+                                    "populateWithValue": false,
+                                    "showBackground": true,
+                                    "showBorder": true,
+                                    "singleLineOnly": true,
+                                    "stringVariable": {
+                                        "varName": "userPayee"
+                                    },
+                                    "textColor": -1,
+                                    "textSizeString": "16"
+                                },
+                                "guid": -8211827875509438513,
+                                "iconRes": 2131231661,
+                                "lastRefreshValue": 0
+                            },
+                            {
+                                "type": "SceneEditText",
+                                "enteredText": "",
+                                "lastEnteredText": "",
+                                "sceneEditTextConfig": {
+                                    "hintText": "Remarks",
+                                    "horizontalLayoutWidth": 50,
+                                    "inputType": "TEXT",
+                                    "isBold": true,
+                                    "isItalic": false,
+                                    "isPassword": false,
+                                    "padding": 16,
+                                    "populateWithValue": false,
+                                    "showBackground": true,
+                                    "showBorder": true,
+                                    "singleLineOnly": true,
+                                    "stringVariable": {
+                                        "varName": "userRemarks"
+                                    },
+                                    "textColor": -1,
+                                    "textSizeString": "16"
+                                },
+                                "guid": -7181842061495663094,
+                                "iconRes": 2131231661,
+                                "lastRefreshValue": 0
+                            },
+                            {
+                                "type": "SceneSwitch",
+                                "checkedValue": false,
+                                "sceneSwitchConfig": {
+                                    "alignment": "Start",
+                                    "booleanVariable": {
+                                        "varName": "userSplit"
+                                    },
+                                    "isChecked": false,
+                                    "text": "Split Transaction",
+                                    "textColor": -1,
+                                    "textSize": "20",
+                                    "textStart": false
+                                },
+                                "guid": -7428808630071777223,
+                                "iconRes": 2131231675,
+                                "lastRefreshValue": 0
+                            },
+                            {
+                                "type": "SceneHorizontalLayout",
+                                "children": [
+                                    {
+                                        "type": "SceneButton",
+                                        "sceneButtonConfig": {
+                                            "buttonColor": -1,
+                                            "closeSceneOnPress": true,
+                                            "htmlFormatting": false,
+                                            "text": "Cancel",
+                                            "textColor": -13421773,
+                                            "textSize": "20",
+                                            "variableToUpdate": {
+                                                "varName": "stopAction"
+                                            },
+                                            "variableUpdateValue": {
+                                                "type": "BooleanValue",
+                                                "isToggle": false,
+                                                "label": true
+                                            }
+                                        },
+                                        "guid": -6474459865767642094,
+                                        "iconRes": 2131231191,
+                                        "lastRefreshValue": 0
+                                    },
+                                    {
+                                        "type": "SceneButton",
+                                        "sceneButtonConfig": {
+                                            "buttonClickConfig": {
+                                                "closeScene": false
+                                            },
+                                            "buttonColor": -1,
+                                            "closeSceneOnPress": true,
+                                            "htmlFormatting": false,
+                                            "text": "Confirm",
+                                            "textColor": -13421773,
+                                            "textSize": "20",
+                                            "variableToUpdate": {
+                                                "varName": "stopAction"
+                                            },
+                                            "variableUpdateValue": {
+                                                "type": "BooleanValue",
+                                                "isToggle": false,
+                                                "label": false
+                                            }
+                                        },
+                                        "guid": -5440262464294394735,
+                                        "iconRes": 2131231191,
+                                        "lastRefreshValue": 0
+                                    }
+                                ],
+                                "sceneHorizontalLayoutConfig": {
+                                    "alignment": "End"
+                                },
+                                "iconResId": 2131231486,
+                                "guid": -4688650665673493658,
+                                "iconRes": 2131231486,
+                                "lastRefreshValue": 0
+                            }
+                        ]
+                    },
+                    "sceneConfig": {
+                        "backgroundColor": -1174405120,
+                        "backgroundImageDisplayMode": "CENTER_CROP",
+                        "blockNextActions": true,
+                        "dismissOnBackPress": false,
+                        "dismissOnHomeTaskSwitch": false,
+                        "displayOption": {
+                            "type": "Dialog",
+                            "closeOnOutsideTouch": false,
+                            "nameRes": 2132021426
+                        },
+                        "foregroundColor": -1118482,
+                        "name": "Log Transaction 2",
+                        "roundedCornerAmount": 10,
+                        "showOnLockScreen": false,
+                        "updateValuesOnSceneClose": true
+                    }
+                },
+                "disableLogging": false,
+                "m_SIGUID": -7842581202939420777,
+                "m_classType": "CustomSceneAction",
+                "m_constraintList": [],
+                "m_isDisabled": false,
+                "m_isOrCondition": false
+            },
+            {
+                "childrenCollapsed": false,
+                "dontLogIfConditionIsFalse": false,
+                "disableLogging": false,
+                "m_SIGUID": -5232479133165610643,
+                "m_classType": "IfConditionAction",
+                "m_constraintList": [
+                    {
+                        "checkCase": false,
+                        "dictionaryKeys": {
+                            "keys": []
+                        },
+                        "dictionaryType": 0,
+                        "enableRegex": false,
+                        "m_booleanValue": false,
+                        "m_doubleValue": 0.0,
+                        "m_intCompareVariable": false,
+                        "m_intGreaterThan": false,
+                        "m_intLessThan": false,
+                        "m_intNotEqual": false,
+                        "m_intValue": 0,
+                        "m_stringComparisonType": 0,
+                        "m_stringEqual": true,
+                        "m_variable": {
+                            "dictionary": {
+                                "entries": [],
+                                "isArray": false,
+                                "variableType": 4,
+                                "type": "Dictionary"
+                            },
+                            "isActionBlockWorkingVar": false,
+                            "isLocalVar": true,
+                            "isSecure": false,
+                            "m_booleanValue": false,
+                            "m_decimalValue": 0.0,
+                            "m_intValue": 0,
+                            "m_name": "stopAction",
+                            "m_stringValue": "",
+                            "m_type": 0,
+                            "supportsInput": true,
+                            "supportsOutput": true
+                        },
+                        "disableLogging": false,
+                        "m_SIGUID": -5473574570763668376,
+                        "m_classType": "MacroDroidVariableConstraint",
+                        "m_constraintList": [],
+                        "m_isDisabled": false,
+                        "m_isOrCondition": false
+                    }
+                ],
+                "m_isDisabled": false,
+                "m_isOrCondition": false
+            },
+            {
+                "blockNextAction": true,
+                "m_nonRoot": true,
+                "m_script": "CACHE_DIR\u003d\"/storage/emulated/0/MacroDroid\" \u0026\u0026 base64 -w 0 {lv\u003drecent_file_path} \u003e \"$CACHE_DIR/img.b64\" \u0026\u0026 echo \u0027{\"image_base64\":\"\u0027$(cat \"$CACHE_DIR/img.b64\")\u0027\",\"app_package_name\":\"{v\u003dtransAppName}\",\"timestamp\":\"\u0027$(date +%s)\u0027\",\"latitude\":\"{last_loc_lat}\",\"longitude\":\"{last_loc_long}\",\"metadata\":{\"user_input\":{\"payee\":\"{lv\u003duserPayee}\",\"split\":\"{lv\u003duserSplit}\",\"remarks\":\"{lv\u003duserRemarks}\"}}}\u0027 \u003e \"$CACHE_DIR/payload.json\" \u0026\u0026 curl -X POST https://duitmyself.obliquetitan.com/webhook/telegram/screenshot -H \"Content-Type: application/json\" -d @\"$CACHE_DIR/payload.json\" \u0026\u0026 rm \"$CACHE_DIR/img.b64\" \"$CACHE_DIR/payload.json\"",
+                "m_variableToSaveResponse": {
+                    "dictionary": {
+                        "entries": [],
+                        "isArray": false,
+                        "variableType": 4,
+                        "type": "Dictionary"
+                    },
+                    "isActionBlockWorkingVar": false,
+                    "isLocalVar": true,
+                    "isSecure": false,
+                    "m_booleanValue": false,
+                    "m_decimalValue": 0.0,
+                    "m_intValue": 0,
+                    "m_name": "uploadResult",
+                    "m_stringValue": "",
+                    "m_type": 2,
+                    "supportsInput": false,
+                    "supportsOutput": true
+                },
+                "timeoutSeconds": 300,
+                "useHelper": false,
+                "useShizuku": false,
+                "disableLogging": false,
+                "m_SIGUID": -5124813668402758847,
+                "m_classType": "ShellScriptAction",
+                "m_comment": "CURL",
+                "m_constraintList": [],
+                "m_isDisabled": false,
+                "m_isOrCondition": false
+            },
+            {
+                "autoExpand": true,
+                "blockNextAction": false,
+                "dimBackground": true,
+                "disableHtml": false,
+                "displayOverStatusBar": false,
+                "iconText": "",
+                "iconType": 0,
+                "liveNotification": false,
+                "m_backgroundColor": -16777216,
+                "m_iconBgColor": -769226,
+                "m_imageResourceId": 0,
+                "m_macroGUIDToRun": 0,
+                "m_notificationChannelType": 0,
+                "m_notificationSubject": "Transaction Captured \u0026 Sent",
+                "m_notificationText": "Screenshot: {lv\u003drecent_file_path} | Result: {lv\u003duploadResult} ",
+                "m_overwriteExisting": false,
+                "m_priority": 0,
+                "m_ringtoneIndex": 0,
+                "m_ringtoneName": "Default",
+                "m_runMacroWhenPressed": false,
+                "m_textColor": -1,
+                "maintainSpaces": false,
+                "notificationActionButtons": [],
+                "notificationChannelName": "Notification action",
+                "notificationIdString": "0",
+                "notificatonId": 0,
+                "preventAndroid16Grouping": false,
+                "preventBackButtonClosing": false,
+                "preventRemovalByBin": false,
+                "showAsOverlayOption": 1,
+                "yPosition": 0.5,
+                "disableLogging": false,
+                "m_SIGUID": -8554241804004048421,
+                "m_classType": "NotificationAction",
+                "m_constraintList": [],
+                "m_isDisabled": false,
+                "m_isOrCondition": false
+            },
+            {
+                "disableLogging": false,
+                "m_SIGUID": -6631604521406183552,
+                "m_classType": "EndIfAction",
+                "m_constraintList": [],
+                "m_isDisabled": false,
+                "m_isOrCondition": false
+            },
+            {
+                "color": -1,
+                "label": "",
+                "disableLogging": false,
+                "m_SIGUID": -6769677537907090538,
+                "m_classType": "SeparatorAction",
+                "m_constraintList": [],
+                "m_isDisabled": false,
+                "m_isOrCondition": false
+            },
+            {
+                "variableNames": [
+                    "transAppName",
+                    "transCapMode"
+                ],
+                "disableLogging": false,
+                "m_SIGUID": -5036947242092094364,
+                "m_classType": "ClearVariablesAction",
+                "m_constraintList": [],
+                "m_isDisabled": false,
+                "m_isOrCondition": false
+            },
+            {
+                "m_delayInMilliSeconds": 0,
+                "m_delayInSeconds": 5,
+                "m_useAlarm": true,
+                "unitForVariables": 0,
+                "disableLogging": false,
+                "m_SIGUID": -4696861075425338225,
+                "m_classType": "PauseAction",
+                "m_constraintList": [],
+                "m_isDisabled": false,
+                "m_isOrCondition": false
+            },
+            {
+                "blockNextAction": true,
+                "m_nonRoot": true,
+                "m_script": "rm \"{lv\u003drecent_file_path}\"",
+                "m_variableToSaveResponse": {
+                    "dictionary": {
+                        "entries": [],
+                        "isArray": false,
+                        "variableType": 4,
+                        "type": "Dictionary"
+                    },
+                    "isActionBlockWorkingVar": false,
+                    "isLocalVar": true,
+                    "isSecure": false,
+                    "m_booleanValue": false,
+                    "m_decimalValue": 0.0,
+                    "m_intValue": 0,
+                    "m_name": "deleteResult",
+                    "m_stringValue": "",
+                    "m_type": 2,
+                    "supportsInput": false,
+                    "supportsOutput": true
+                },
+                "timeoutSeconds": 5,
+                "useHelper": false,
+                "useShizuku": false,
+                "disableLogging": false,
+                "m_SIGUID": -8828023821994130339,
+                "m_classType": "ShellScriptAction",
+                "m_constraintList": [],
+                "m_isDisabled": false,
+                "m_isOrCondition": false
+            },
+            {
+                "disableLogging": false,
+                "m_SIGUID": -9065594734313606933,
+                "m_classType": "EndIfAction",
+                "m_constraintList": [],
+                "m_isDisabled": false,
+                "m_isOrCondition": false
+            }
+        ],
+        "m_category": "Finance",
+        "m_constraintList": [],
+        "m_description": "",
+        "m_descriptionOpen": false,
+        "m_enabled": true,
+        "m_excludeLog": false,
+        "m_headingColor": 0,
+        "m_isOrCondition": false,
+        "m_name": "Capture SS Taken",
+        "m_triggerList": [
+            {
+                "fileFilter": "*",
+                "folderPath": "/storage/emulated/0/DCIM/Screenshots",
+                "useStaticFolder": true,
+                "watchForCreated": true,
+                "watchForDeleted": false,
+                "watchForModified": false,
+                "disableLogging": false,
+                "m_SIGUID": -5506614567408284438,
+                "m_classType": "FileChangedTrigger",
+                "m_comment": "Created",
+                "m_constraintList": [],
+                "m_isDisabled": false,
+                "m_isOrCondition": false
+            },
+            {
+                "fileFilter": "*",
+                "folderPath": "/storage/emulated/0/DCIM/Screenshots",
+                "useStaticFolder": true,
+                "watchForCreated": false,
+                "watchForDeleted": false,
+                "watchForModified": true,
+                "disableLogging": false,
+                "m_SIGUID": -5692738192192087483,
+                "m_classType": "FileChangedTrigger",
+                "m_comment": "update",
+                "m_constraintList": [],
+                "m_isDisabled": true,
+                "m_isOrCondition": false
+            }
+        ]
+    },
+    "macroExportVersion": 1
+}

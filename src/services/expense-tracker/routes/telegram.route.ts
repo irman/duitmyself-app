@@ -3,6 +3,7 @@ import type { TelegramConversationService } from '../services/telegram-conversat
 import type { TelegramUpdate } from '../adapters/telegram/telegram.interface';
 import { logger } from '@/shared/utils/logger';
 import { getWideEvent } from '@/shared/middleware/wide-event.middleware';
+import { config } from '@/shared/config/config';
 
 /**
  * Create Telegram webhook routes
@@ -137,7 +138,18 @@ export function createTelegramRoutes(conversationService: TelegramConversationSe
                 latitude,
                 longitude,
                 timestamp,
+                metadata,
             } = body;
+
+            // Use chat_id from request or fall back to environment variable
+            const chatId = chat_id || parseInt(config.telegram.expenseChatId);
+
+            if (!chatId) {
+                return c.json({
+                    success: false,
+                    error: 'Chat ID not provided and TELEGRAM_EXPENSE_CHAT_ID not configured',
+                }, 400);
+            }
 
             const wideEvent = getWideEvent(c);
 
@@ -150,23 +162,24 @@ export function createTelegramRoutes(conversationService: TelegramConversationSe
             }
 
             // Validate required fields
-            if (!chat_id || !image_base64) {
+            if (!image_base64) {
                 return c.json({
                     success: false,
-                    error: 'Missing required fields: chat_id, image_base64',
+                    error: 'Missing required field: image_base64',
                 }, 400);
             }
 
             logger.info({
                 event: 'telegram.screenshot.webhook.received',
-                chatId: chat_id,
+                chatId,
                 hasAppPackage: !!app_package_name,
                 hasLocation: !!(latitude && longitude),
+                hasMetadata: !!metadata,
             }, 'Received screenshot from MacroDroid');
 
             // Process screenshot
             await conversationService.handleScreenshot(
-                chat_id,
+                chatId,
                 image_base64,
                 {
                     appPackageName: app_package_name,
