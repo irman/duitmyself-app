@@ -31,11 +31,13 @@ export function createTelegramRoutes(conversationService: TelegramConversationSe
 
             const update: TelegramUpdate = await c.req.json();
 
-            logger.debug({
+            logger.info({
                 event: 'telegram.webhook.received',
                 updateId: update.update_id,
                 hasMessage: !!update.message,
                 hasCallback: !!update.callback_query,
+                messageText: update.message?.text,
+                chatId: update.message?.chat.id || update.callback_query?.message?.chat.id,
             }, 'Received Telegram webhook update');
 
             // Handle callback query (button press)
