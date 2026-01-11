@@ -66,9 +66,22 @@ export class LunchMoneyAdapter implements BudgetAdapter {
      */
     async createTransaction(transaction: Transaction): Promise<TransactionResult> {
         try {
+            // Convert date to YYYY-MM-DD format
+            let dateString: string;
+            if (typeof transaction.date === 'number') {
+                // Unix timestamp (seconds)
+                dateString = new Date(transaction.date * 1000).toISOString().split('T')[0];
+            } else if (transaction.date.includes('T')) {
+                // ISO string
+                dateString = transaction.date.split('T')[0];
+            } else {
+                // Already in YYYY-MM-DD format
+                dateString = transaction.date;
+            }
+
             // Convert our transaction format to Lunch Money format
             const lunchMoneyTransaction = {
-                date: transaction.date.split('T')[0], // YYYY-MM-DD format
+                date: dateString,
                 amount: transaction.amount,
                 payee: transaction.payee,
                 asset_id: parseInt(transaction.account_id, 10),
