@@ -82,7 +82,7 @@ export class TelegramConversationService {
                 await this.telegram.editMessage(
                     chatId,
                     processingMsg.message_id,
-                    '❌ This doesn\'t look like a financial transaction.\n\nPlease send a screenshot of a transaction notification or receipt.'
+                    '❌ This doesn\'t look like a financial transaction.\\n\\nPlease send a screenshot of a transaction notification or receipt.'
                 );
                 return;
             }
