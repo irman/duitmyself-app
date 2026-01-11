@@ -94,6 +94,9 @@ export class LunchMoneyAdapter implements BudgetAdapter {
             logger.debug({
                 event: 'budget.create.request',
                 transaction: lunchMoneyTransaction,
+                originalDate: transaction.date,
+                convertedDate: dateString,
+                dateType: typeof transaction.date,
             }, 'Creating transaction in Lunch Money');
 
             const response = await this.client
