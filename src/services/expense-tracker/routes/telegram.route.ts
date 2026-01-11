@@ -26,6 +26,7 @@ export function createTelegramRoutes(conversationService: TelegramConversationSe
             if (wideEvent) {
                 wideEvent.webhook = {
                     payload_type: 'telegram_update',
+                    has_gps: false,
                 };
             }
 
@@ -132,6 +133,8 @@ export function createTelegramRoutes(conversationService: TelegramConversationSe
             if (wideEvent) {
                 wideEvent.webhook = {
                     payload_type: 'telegram_screenshot',
+                    has_gps: !!(latitude && longitude),
+                    app_package_name,
                 };
             }
 
