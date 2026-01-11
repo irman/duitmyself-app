@@ -175,7 +175,12 @@ export function createTelegramRoutes(conversationService: TelegramConversationSe
                 hasAppPackage: !!app_package_name,
                 hasLocation: !!(latitude && longitude),
                 hasMetadata: !!metadata,
+                hasUserInput: !!(metadata?.user_input),
             }, 'Received screenshot from MacroDroid');
+
+            // Extract user input from metadata
+            const userPayee = metadata?.user_input?.payee;
+            const userRemarks = metadata?.user_input?.remarks;
 
             // Process screenshot
             await conversationService.handleScreenshot(
@@ -186,6 +191,8 @@ export function createTelegramRoutes(conversationService: TelegramConversationSe
                     latitude,
                     longitude,
                     timestamp,
+                    userPayee,
+                    userRemarks,
                 }
             );
 

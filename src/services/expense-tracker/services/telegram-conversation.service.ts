@@ -35,6 +35,8 @@ export class TelegramConversationService {
             latitude?: string;
             longitude?: string;
             timestamp?: string;
+            userPayee?: string;
+            userRemarks?: string;
         }
     ): Promise<void> {
         try {
@@ -69,6 +71,8 @@ export class TelegramConversationService {
                     appPackageName: metadata?.appPackageName,
                     location: locationData,
                     timestamp: metadata?.timestamp || new Date().toISOString(),
+                    userPayee: metadata?.userPayee,
+                    userRemarks: metadata?.userRemarks,
                     availableAccounts,
                 }
             );
