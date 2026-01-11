@@ -117,6 +117,16 @@ export class LunchMoneyAdapter implements BudgetAdapter {
             };
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            const errorDetails = error instanceof BudgetAPIError ? error.responseBody : undefined;
+
+            logger.error({
+                event: 'budget.create.failed',
+                error: errorMessage,
+                errorDetails: errorDetails ? JSON.stringify(errorDetails) : undefined,
+                merchant: transaction.payee,
+                amount: transaction.amount,
+                accountId: transaction.account_id,
+            }, 'Failed to create transaction in Lunch Money');
 
             logBudgetAPICall({
                 action: 'create',

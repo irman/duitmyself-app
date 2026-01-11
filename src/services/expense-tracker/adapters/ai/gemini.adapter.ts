@@ -336,7 +336,7 @@ Now analyze the notification above and return the JSON:
         // Build user context section
         const userContext = [];
         if (metadata?.userPayee) {
-            userContext.push(`🔴 USER PROVIDED PAYEE (USE THIS AS MERCHANT): "${metadata.userPayee}" - This is authoritative, just normalize the formatting/spelling`);
+            userContext.push(`🔴 USER PROVIDED PAYEE: \"${metadata.userPayee}\" - Use this as the merchant name, but NORMALIZE it (proper capitalization, fix spelling, clean formatting). Example: "kk mart" → "KK Mart", "shopee pay" → "Shopee Pay"`);
         }
         if (metadata?.userRemarks) {
             userContext.push(`📝 USER REMARKS (add to notes): ${metadata.userRemarks}`);
