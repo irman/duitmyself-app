@@ -128,16 +128,6 @@ export function createTelegramRoutes(conversationService: TelegramConversationSe
      */
     app.post('/webhook/telegram/screenshot', async (c) => {
         try {
-            const wideEvent = getWideEvent(c);
-
-            if (wideEvent) {
-                wideEvent.webhook = {
-                    payload_type: 'telegram_screenshot',
-                    has_gps: !!(latitude && longitude),
-                    app_package_name,
-                };
-            }
-
             const body = await c.req.json();
 
             const {
@@ -148,6 +138,16 @@ export function createTelegramRoutes(conversationService: TelegramConversationSe
                 longitude,
                 timestamp,
             } = body;
+
+            const wideEvent = getWideEvent(c);
+
+            if (wideEvent) {
+                wideEvent.webhook = {
+                    payload_type: 'telegram_screenshot',
+                    has_gps: !!(latitude && longitude),
+                    app_package_name,
+                };
+            }
 
             // Validate required fields
             if (!chat_id || !image_base64) {
