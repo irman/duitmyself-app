@@ -1,8 +1,10 @@
 import { Hono } from 'hono';
 import type { TransactionProcessor } from '@/services/expense-tracker/transaction-processor.service';
 import type { CCStatementService } from '@/services/cc-statements/cc-statement.service';
+import type { TelegramConversationService } from '@/services/expense-tracker/services/telegram-conversation.service';
 import { createWebhookRoutes } from '@/services/expense-tracker/routes/webhook.route';
 import { createCCStatementRoutes } from '@/services/cc-statements/routes/cc-statement.route';
+import { createTelegramRoutes } from '@/services/expense-tracker/routes/telegram.route';
 import type { HealthCheckResponse } from '@/shared/types/common.types';
 
 /**
@@ -10,9 +12,14 @@ import type { HealthCheckResponse } from '@/shared/types/common.types';
  * 
  * @param processor - Transaction processor instance
  * @param ccStatementService - CC Statement service instance (optional)
+ * @param telegramConversationService - Telegram conversation service instance (optional)
  * @returns Hono app with all routes configured
  */
-export function createRoutes(processor: TransactionProcessor, ccStatementService?: CCStatementService) {
+export function createRoutes(
+    processor: TransactionProcessor,
+    ccStatementService?: CCStatementService,
+    telegramConversationService?: TelegramConversationService
+) {
     const app = new Hono();
 
     // Health check endpoint
@@ -58,6 +65,12 @@ export function createRoutes(processor: TransactionProcessor, ccStatementService
     if (ccStatementService) {
         const ccStatementRoutes = createCCStatementRoutes(ccStatementService);
         app.route('/', ccStatementRoutes);
+    }
+
+    // Mount Telegram routes (if service is available)
+    if (telegramConversationService) {
+        const telegramRoutes = createTelegramRoutes(telegramConversationService);
+        app.route('/', telegramRoutes);
     }
 
     return app;

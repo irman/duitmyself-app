@@ -97,6 +97,12 @@ export const config = {
         baseUrl: 'https://us1.locationiq.com/v1',
     },
 
+    // Telegram Bot (Expense Tracker)
+    telegram: {
+        expenseBotToken: process.env.TELEGRAM_EXPENSE_BOT_TOKEN || '',
+        expenseChatId: process.env.TELEGRAM_EXPENSE_CHAT_ID || '',
+    },
+
     // Security
     security: {
         webhookSecret: env.WEBHOOK_SECRET,

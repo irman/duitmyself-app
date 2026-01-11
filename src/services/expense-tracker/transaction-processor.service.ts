@@ -29,8 +29,8 @@ import { trace, context } from '@opentelemetry/api';
  */
 export class TransactionProcessor {
     constructor(
-        private aiAdapter: AIAdapter,
-        private budgetAdapter: BudgetAdapter,
+        public aiAdapter: AIAdapter,
+        public budgetAdapter: BudgetAdapter,
         private geocodingAdapter: GeocodingAdapter
     ) { }
 

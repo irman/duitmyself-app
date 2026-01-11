@@ -12,8 +12,13 @@ import { LocationIQAdapter } from './services/expense-tracker/adapters/geocoding
 import { CCStatementService } from './services/cc-statements/cc-statement.service';
 import { NotionAdapterImpl } from './services/cc-statements/adapters/notion/notion.adapter';
 import { TelegramAdapterImpl } from './services/cc-statements/adapters/telegram/telegram.adapter';
+import { TelegramBotAdapter } from './services/expense-tracker/adapters/telegram/telegram.adapter';
+import { ConversationStateService } from './services/expense-tracker/services/conversation-state.service';
+import { AccountSelectionService } from './services/expense-tracker/services/account-selection.service';
+import { TelegramConversationService } from './services/expense-tracker/services/telegram-conversation.service';
 import { config, logConfigSummary } from './shared/config/config';
 import { logger } from './shared/utils/logger';
+import { join } from 'path';
 
 /**
  * Application entry point
@@ -82,6 +87,49 @@ async function main() {
             logger.info('CC Statement Service disabled - missing NOTION_API_KEY or TELEGRAM_BOT_TOKEN');
         }
 
+        // Initialize Telegram Expense Bot (if credentials are provided)
+        let telegramConversationService: TelegramConversationService | undefined;
+        if (config.telegram.expenseBotToken && config.telegram.expenseChatId) {
+            logger.info('Initializing Telegram Expense Bot...');
+
+            // Initialize Telegram bot adapter
+            const telegramBotAdapter = new TelegramBotAdapter(
+                config.telegram.expenseBotToken,
+                config.retry
+            );
+
+            // Initialize conversation state manager
+            const conversationState = new ConversationStateService();
+
+            // Initialize account selection service
+            const accountMappingPath = join(process.cwd(), 'config', 'account-mapping.json');
+            const accountSelection = new AccountSelectionService(accountMappingPath);
+
+            // Initialize conversation service
+            telegramConversationService = new TelegramConversationService(
+                telegramBotAdapter,
+                transactionProcessor,
+                conversationState,
+                accountSelection
+            );
+
+            // Set up periodic cleanup of old conversations (every 30 minutes)
+            setInterval(() => {
+                conversationState.cleanup();
+                logger.debug({
+                    event: 'telegram.conversation.cleanup',
+                    activeConversations: conversationState.getCount(),
+                }, 'Cleaned up old conversations');
+            }, 30 * 60 * 1000);
+
+            logger.info({
+                event: 'telegram.expense_bot.initialized',
+                chatId: config.telegram.expenseChatId,
+            }, 'Telegram Expense Bot initialized successfully');
+        } else {
+            logger.info('Telegram Expense Bot disabled - missing TELEGRAM_EXPENSE_BOT_TOKEN or TELEGRAM_EXPENSE_CHAT_ID');
+        }
+
         // Validate adapters on startup
         logger.info('Validating adapter connections...');
         const adapterStatus = await transactionProcessor.validateAdapters();
@@ -104,7 +152,7 @@ async function main() {
 
         // Create and configure app
         const app = createApp();
-        const routes = createRoutes(transactionProcessor, ccStatementService);
+        const routes = createRoutes(transactionProcessor, ccStatementService, telegramConversationService);
 
         // Mount routes
         app.route('/', routes);

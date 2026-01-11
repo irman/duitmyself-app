@@ -101,6 +101,27 @@
             },
             "default_category": "Shopping",
             "auto_clear": true
+        },
+        {
+            "id": "246050",
+            "label": "Cash",
+            "icon": "💵",
+            "color": "#4CAF50",
+            "tags": [
+                "cash",
+                "manual"
+            ],
+            "matchers": {
+                "package_names": [],
+                "keywords": [
+                    "cash",
+                    "tunai"
+                ],
+                "merchant_patterns": []
+            },
+            "default_category": "General",
+            "auto_clear": false,
+            "notes": "For manual cash transactions"
         }
     ],
     "preferences": {

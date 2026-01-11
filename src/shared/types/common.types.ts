@@ -201,3 +201,22 @@ export interface MetricsResponse {
     /** Uptime in seconds */
     uptime: number;
 }
+
+/**
+ * Telegram screenshot webhook payload
+ * For MacroDroid → Telegram bot integration
+ */
+export interface TelegramScreenshotPayload {
+    /** Telegram chat ID */
+    chat_id: number;
+    /** Base64-encoded screenshot */
+    image_base64: string;
+    /** App package name (optional) */
+    app_package_name?: string;
+    /** GPS latitude (optional) */
+    latitude?: string;
+    /** GPS longitude (optional) */
+    longitude?: string;
+    /** Timestamp */
+    timestamp?: string;
+}
