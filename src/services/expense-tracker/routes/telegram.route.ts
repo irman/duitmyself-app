@@ -33,25 +33,70 @@ export function createTelegramRoutes(conversationService: TelegramConversationSe
 
             const update: TelegramUpdate = await c.req.json();
 
+            // Log ALL incoming updates with full details
             logger.info({
                 event: 'telegram.webhook.received',
                 updateId: update.update_id,
                 hasMessage: !!update.message,
                 hasCallback: !!update.callback_query,
                 messageText: update.message?.text,
+                callbackData: update.callback_query?.data,
+                callbackId: update.callback_query?.id,
                 chatId: update.message?.chat.id || update.callback_query?.message?.chat.id,
+                updateKeys: Object.keys(update),
+                rawUpdate: JSON.stringify(update).substring(0, 300),
             }, 'Received Telegram webhook update');
 
-            // Handle callback query (button press)
+            // Handle callback query (button press) - MUST BE FIRST
             if (update.callback_query) {
                 const { id, message, data } = update.callback_query;
 
+                logger.info({
+                    event: 'telegram.callback.detected',
+                    callbackId: id,
+                    data,
+                    hasMessage: !!message,
+                    chatId: message?.chat.id,
+                }, 'Callback query detected - button was pressed');
+
                 if (message && data) {
-                    await conversationService.handleCallback(
-                        message.chat.id,
-                        id,
-                        data
-                    );
+                    try {
+                        logger.info({ event: 'telegram.callback.handling', callbackId: id, data }, 'Handling callback');
+
+                        await conversationService.handleCallback(
+                            message.chat.id,
+                            id,
+                            data
+                        );
+
+                        logger.info({ event: 'telegram.callback.success', callbackId: id }, 'Callback handled');
+                    } catch (error) {
+                        logger.error({
+                            event: 'telegram.callback.error',
+                            callbackId: id,
+                            data,
+                            error: error instanceof Error ? {
+                                message: error.message,
+                                stack: error.stack,
+                            } : String(error),
+                        }, 'Failed to handle callback');
+
+                        // Answer callback to remove loading state
+                        try {
+                            await conversationService.telegram.answerCallbackQuery(
+                                id,
+                                '❌ Error processing request. Please try again.'
+                            );
+                        } catch (answerError) {
+                            logger.error({ error: String(answerError) }, 'Failed to answer callback');
+                        }
+                    }
+                } else {
+                    logger.warn({
+                        event: 'telegram.callback.invalid',
+                        hasMessage: !!message,
+                        hasData: !!data,
+                    }, 'Invalid callback - missing message or data');
                 }
 
                 return c.json({ ok: true });
