@@ -68,15 +68,43 @@ export class LunchMoneyAdapter implements BudgetAdapter {
         try {
             // Convert date to YYYY-MM-DD format
             let dateString: string;
-            if (typeof transaction.date === 'number') {
-                // Unix timestamp (seconds)
-                dateString = new Date(transaction.date * 1000).toISOString().split('T')[0];
-            } else if (transaction.date.includes('T')) {
-                // ISO string
-                dateString = transaction.date.split('T')[0];
-            } else {
-                // Already in YYYY-MM-DD format
-                dateString = transaction.date;
+            const dateValue = transaction.date;
+
+            // Handle number (Unix timestamp in seconds)
+            if (typeof dateValue === 'number') {
+                dateString = new Date(dateValue * 1000).toISOString().split('T')[0];
+            }
+            // Handle string that looks like a Unix timestamp
+            else if (typeof dateValue === 'string' && /^\d{10,13}$/.test(dateValue)) {
+                // Unix timestamp as string (10 digits = seconds, 13 digits = milliseconds)
+                const timestamp = parseInt(dateValue, 10);
+                const multiplier = dateValue.length === 10 ? 1000 : 1;
+                dateString = new Date(timestamp * multiplier).toISOString().split('T')[0];
+            }
+            // Handle ISO 8601 datetime string
+            else if (typeof dateValue === 'string' && dateValue.includes('T')) {
+                dateString = dateValue.split('T')[0];
+            }
+            // Handle YYYY-MM-DD format
+            else if (typeof dateValue === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateValue)) {
+                dateString = dateValue;
+            }
+            // Fallback: try to parse as Date
+            else if (dateValue) {
+                try {
+                    dateString = new Date(dateValue as string).toISOString().split('T')[0];
+                } catch (error) {
+                    logger.error({
+                        event: 'budget.date.conversion.failed',
+                        dateValue,
+                        dateType: typeof dateValue,
+                    }, 'Failed to convert date to YYYY-MM-DD format');
+                    throw new Error(`Invalid date format: ${dateValue}`);
+                }
+            }
+            // No date provided
+            else {
+                throw new Error('Transaction date is required');
             }
 
             // Convert our transaction format to Lunch Money format
