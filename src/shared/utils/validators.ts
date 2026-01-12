@@ -104,9 +104,35 @@ export const coordinatesSchema = z.object({
 });
 
 /**
- * Account mapping validation schema
+ * Account mapping validation schema (simple format)
  */
 export const accountMappingSchema = z.record(z.string(), z.string());
+
+/**
+ * Enhanced account mapping validation schema
+ * Supports the new format with accounts array, matchers, and preferences
+ */
+export const enhancedAccountMappingSchema = z.object({
+    accounts: z.array(z.object({
+        id: z.string(),
+        label: z.string().optional(),
+        icon: z.string().optional(),
+        color: z.string().optional(),
+        tags: z.array(z.string()).optional(),
+        matchers: z.object({
+            package_names: z.array(z.string()),
+            keywords: z.array(z.string()).optional(),
+            merchant_patterns: z.array(z.string()).optional(),
+        }),
+        default_category: z.string().optional(),
+        auto_clear: z.boolean().optional(),
+    })),
+    preferences: z.object({
+        default_account_id: z.string().optional(),
+        show_recent_accounts_first: z.boolean().optional(),
+        max_recent_accounts: z.number().optional(),
+    }).optional(),
+});
 
 /**
  * Validate webhook payload
@@ -147,10 +173,17 @@ export function validateCoordinates(lat: string, lon: string) {
 }
 
 /**
- * Validate account mapping
+ * Validate account mapping (simple format)
  */
 export function validateAccountMapping(data: unknown) {
     return accountMappingSchema.parse(data);
+}
+
+/**
+ * Validate enhanced account mapping
+ */
+export function validateEnhancedAccountMapping(data: unknown) {
+    return enhancedAccountMappingSchema.parse(data);
 }
 
 /**
@@ -162,3 +195,4 @@ export type ValidatedEnv = z.infer<typeof envSchema>;
 export type ValidatedExtractedTransaction = z.infer<typeof extractedTransactionSchema>;
 export type ValidatedCoordinates = z.infer<typeof coordinatesSchema>;
 export type ValidatedAccountMapping = z.infer<typeof accountMappingSchema>;
+export type ValidatedEnhancedAccountMapping = z.infer<typeof enhancedAccountMappingSchema>;

@@ -18,17 +18,63 @@ function loadEnv(): ValidatedEnv {
 
 /**
  * Load account mapping from config file
+ * Supports both simple format (Record<string, string>) and enhanced format (with accounts array)
  */
 function loadAccountMapping(): AccountMapping {
     try {
         const configPath = join(process.cwd(), 'config', 'account-mapping.json');
         const configContent = readFileSync(configPath, 'utf-8');
-        const mapping = JSON.parse(configContent) as unknown;
-        return validateAccountMapping(mapping);
+        const rawMapping = JSON.parse(configContent) as unknown;
+
+        // Check if it's the enhanced format (has 'accounts' array)
+        if (rawMapping && typeof rawMapping === 'object' && 'accounts' in rawMapping) {
+            logger.info('Loading enhanced account mapping format');
+
+            // Validate enhanced format
+            const { validateEnhancedAccountMapping } = require('../utils/validators');
+            const enhancedMapping = validateEnhancedAccountMapping(rawMapping);
+
+            // Convert enhanced format to simple format
+            const mapping: AccountMapping = {};
+            for (const account of enhancedMapping.accounts) {
+                for (const packageName of account.matchers.package_names) {
+                    mapping[packageName] = account.id;
+                    logger.debug({
+                        event: 'account.mapping.loaded',
+                        packageName,
+                        accountId: account.id,
+                        label: account.label,
+                    }, `Mapped ${packageName} to account ${account.id} (${account.label})`);
+                }
+            }
+
+            logger.info({
+                event: 'account.mapping.success',
+                format: 'enhanced',
+                accountCount: enhancedMapping.accounts.length,
+                mappingCount: Object.keys(mapping).length,
+            }, 'Successfully loaded enhanced account mapping');
+
+            return mapping;
+        }
+
+        // Otherwise, validate as simple format
+        logger.info('Loading simple account mapping format');
+        const mapping = validateAccountMapping(rawMapping);
+
+        logger.info({
+            event: 'account.mapping.success',
+            format: 'simple',
+            mappingCount: Object.keys(mapping).length,
+        }, 'Successfully loaded simple account mapping');
+
+        return mapping;
     } catch (error) {
-        logger.warn('Failed to load account mapping from config file, using empty mapping', {
-            error,
-        });
+        logger.error({
+            event: 'account.mapping.failed',
+            error: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : undefined,
+        }, 'Failed to load account mapping from config file, using empty mapping');
         return {};
     }
 }
